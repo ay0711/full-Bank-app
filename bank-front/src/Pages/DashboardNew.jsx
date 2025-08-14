@@ -134,6 +134,7 @@ const Dashboard = () => {
             { label: 'Airtime/Data', icon: 'fa-mobile-alt', color: 'info', path: '/airtime-data' },
             { label: 'Bills', icon: 'fa-file-invoice-dollar', color: 'secondary', path: '/bill-payments' },
             { label: 'Cards', icon: 'fa-credit-card', color: 'danger', path: '/cards' },
+            { label: 'Transactions', icon: 'fa-list', color: 'dark', path: '/transactions' },
           ].map((action, idx) => {
             const isActive = location.pathname === action.path || (action.path === '/transfer' && location.pathname === '/dashboard');
             return (
