@@ -74,8 +74,11 @@ const AirtimeData = () => {
               <div className="text-muted">No purchases yet</div>
             ) : (
               <ul className="list-group">
-                {history.map((tx, idx) => (
-                  <li className="list-group-item d-flex justify-content-between align-items-center" key={idx}>
+                {history.map((tx) => (
+                  <li
+                    className="list-group-item d-flex justify-content-between align-items-center"
+                    key={`${tx.type}-${tx.phone}-${tx.amount}-${tx.date}`}
+                  >
                     <span>{tx.type === 'airtime' ? 'Airtime' : 'Data'} for {tx.phone}</span>
                     <span className="fw-bold">₦{tx.amount}</span>
                     <span className="text-muted" style={{ fontSize: 12 }}>{tx.date}</span>
