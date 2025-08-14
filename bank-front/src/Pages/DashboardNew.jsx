@@ -35,8 +35,8 @@ const Dashboard = () => {
       try {
         setIsLoading(true);
         const [txRes, notifRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL || 'https://backend-bank-3fqd.onrender.com/api/banking'}/transactions`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${import.meta.env.VITE_API_URL || 'https://backend-bank-3fqd.onrender.com/api/opay'}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
+          axios.get(`${import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com/api/banking'}/transactions`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com/api/opay'}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setTransactions(txRes.data.transactions || []);
         setNotifications(notifRes.data.notifications || []);

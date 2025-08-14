@@ -25,8 +25,8 @@ const AirtimeData = () => {
     try {
       const token = localStorage.getItem('token');
       const url = type === 'airtime'
-        ? 'https://backend-bank-3fqd.onrender.com/api/opay/airtime'
-        : 'https://backend-bank-3fqd.onrender.com/api/opay/data';
+  ? 'https://full-bank-app.onrender.com/api/opay/airtime'
+  : 'https://full-bank-app.onrender.com/api/opay/data';
       await axios.post(url, { phone, amount }, {
         headers: { Authorization: `Bearer ${token}` }
       });

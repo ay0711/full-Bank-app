@@ -114,7 +114,7 @@ const Me = () => {
                         reader.onloadend = async () => {
                           try {
                             const token = localStorage.getItem('token');
-                            const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/profile-image', {
+                            const res = await fetch('https://full-bank-app.onrender.com/api/auth/profile-image', {
                               method: 'PUT',
                               headers: {
                                 'Content-Type': 'application/json',
@@ -172,7 +172,7 @@ const Me = () => {
                   setEditProfileMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/profile', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/profile', {
                       method: 'PUT',
                       headers: {
                         'Content-Type': 'application/json',
@@ -231,7 +231,7 @@ const Me = () => {
                   setChangePasswordMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/change-password', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/change-password', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
@@ -274,7 +274,7 @@ const Me = () => {
                   setNotifMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/notification-prefs', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/notification-prefs', {
                       headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const data = await res.json();
@@ -297,7 +297,7 @@ const Me = () => {
                   setNotifMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/notification-prefs', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/notification-prefs', {
                       method: 'PUT',
                       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                       body: JSON.stringify(notifPrefs)
@@ -355,7 +355,7 @@ const Me = () => {
                         const token = localStorage.getItem('token');
                         if (e.target.checked) {
                           // Enable 2FA
-                          const res = await fetch('https://backend-bank-3fqd.onrender.com/api/opay/2fa/enable', {
+                          const res = await fetch('https://full-bank-app.onrender.com/api/opay/2fa/enable', {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${token}` }
                           });
@@ -367,7 +367,7 @@ const Me = () => {
                           }
                         } else {
                           // Disable 2FA
-                          await fetch('https://backend-bank-3fqd.onrender.com/api/opay/2fa/disable', {
+                          await fetch('https://full-bank-app.onrender.com/api/opay/2fa/disable', {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${token}` }
                           });
@@ -387,7 +387,7 @@ const Me = () => {
                         setTwoFAMsg('');
                         try {
                           const token = localStorage.getItem('token');
-                          const res = await fetch('https://backend-bank-3fqd.onrender.com/api/opay/2fa/verify', {
+                          const res = await fetch('https://full-bank-app.onrender.com/api/opay/2fa/verify', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                             body: JSON.stringify({ code: twoFACode })
@@ -412,7 +412,7 @@ const Me = () => {
                   setAppSettingsMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/app-settings', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/app-settings', {
                       headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const data = await res.json();
@@ -425,7 +425,7 @@ const Me = () => {
                   setSessionsMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/sessions', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/sessions', {
                       headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const data = await res.json();
@@ -441,7 +441,7 @@ const Me = () => {
                   setDevicesMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/devices', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/devices', {
                       headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const data = await res.json();
@@ -461,7 +461,7 @@ const Me = () => {
                 e.preventDefault(); setPrivacyMsg('');
                 try {
                   const token = localStorage.getItem('token');
-                  const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/privacy', {
+                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/privacy', {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(privacy)
                   });
                   const data = await res.json();
@@ -503,7 +503,7 @@ const Me = () => {
                         setSessionsMsg('');
                         try {
                           const token = localStorage.getItem('token');
-                          await fetch(`https://backend-bank-3fqd.onrender.com/api/auth/sessions/${s.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                          await fetch(`https://full-bank-app.onrender.com/api/auth/sessions/${s.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
                           setSessions(sessions.filter((_, idx) => idx !== i));
                         } catch { setSessionsMsg('Failed to revoke'); }
                       }}>Revoke</button>}
@@ -529,7 +529,7 @@ const Me = () => {
                   setDownloadMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/download', { headers: { 'Authorization': `Bearer ${token}` } });
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/download', { headers: { 'Authorization': `Bearer ${token}` } });
                     if (res.ok) {
                       const blob = await res.blob();
                       const url = window.URL.createObjectURL(blob);
@@ -560,7 +560,7 @@ const Me = () => {
                   setDeleteMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/delete', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/delete', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
                     if (res.ok) {
                       setDeleteMsg('Account deleted. Logging out...');
                       setTimeout(() => handleLogout(), 1500);
@@ -585,7 +585,7 @@ const Me = () => {
                 e.preventDefault(); setThemeMsg('');
                 try {
                   const token = localStorage.getItem('token');
-                  const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/theme', {
+                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/theme', {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(theme)
                   });
                   const data = await res.json();
@@ -622,7 +622,7 @@ const Me = () => {
                 e.preventDefault(); setSupportMsg('');
                 try {
                   const token = localStorage.getItem('token');
-                  const res = await fetch('https://backend-bank-3fqd.onrender.com/api/support', {
+                  const res = await fetch('https://full-bank-app.onrender.com/api/support', {
                     method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ message: supportMsg })
                   });
                   const data = await res.json();
@@ -656,7 +656,7 @@ const Me = () => {
                         setDevicesMsg('');
                         try {
                           const token = localStorage.getItem('token');
-                          await fetch(`https://backend-bank-3fqd.onrender.com/api/auth/devices/${d.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                          await fetch(`https://full-bank-app.onrender.com/api/auth/devices/${d.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
                           setDevices(devices.filter((_, idx) => idx !== i));
                         } catch { setDevicesMsg('Failed to remove'); }
                       }}>Remove</button>
@@ -681,7 +681,7 @@ const Me = () => {
                 e.preventDefault(); setLimitsMsg('');
                 try {
                   const token = localStorage.getItem('token');
-                  const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/limits', {
+                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/limits', {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(limits)
                   });
                   const data = await res.json();
@@ -718,7 +718,7 @@ const Me = () => {
                 e.preventDefault(); setAccessibilityMsg('');
                 try {
                   const token = localStorage.getItem('token');
-                  const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/accessibility', {
+                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/accessibility', {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(accessibility)
                   });
                   const data = await res.json();
@@ -776,7 +776,7 @@ const Me = () => {
                   setAppSettingsMsg('');
                   try {
                     const token = localStorage.getItem('token');
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/auth/app-settings', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/app-settings', {
                       method: 'PUT',
                       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                       body: JSON.stringify(appSettings)
@@ -838,7 +838,7 @@ const Me = () => {
                     const token = localStorage.getItem('token');
                     const formData = new FormData();
                     formData.append('kyc', kycFile);
-                    const res = await fetch('https://backend-bank-3fqd.onrender.com/api/opay/kyc', {
+                    const res = await fetch('https://full-bank-app.onrender.com/api/opay/kyc', {
                       method: 'POST',
                       headers: { 'Authorization': `Bearer ${token}` },
                       body: formData

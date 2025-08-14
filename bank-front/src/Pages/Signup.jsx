@@ -35,7 +35,7 @@ const Signup = () => {
     try {
       console.log('Attempting to signup with:', { firstName: values.firstName, lastName: values.lastName, email: values.email });
       
-      const response = await axios.post('https://backend-bank-3fqd.onrender.com/api/auth/signup', {
+  const response = await axios.post('https://full-bank-app.onrender.com/api/auth/signup', {
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,

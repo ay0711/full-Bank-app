@@ -9,7 +9,7 @@ const Cards = () => {
     try {
       const token = localStorage.getItem('token');
       // This should call your backend endpoint for requesting a card
-      await axios.post('https://backend-bank-3fqd.onrender.com/api/opay/cards/request', { type: cardType }, {
+  await axios.post('https://full-bank-app.onrender.com/api/opay/cards/request', { type: cardType }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessage(`Requested a ${cardType} card successfully!`);
@@ -32,7 +32,7 @@ const Cards = () => {
       try {
         const token = localStorage.getItem('token');
         // Fallback for missing backend route
-        const res = await axios.get('https://backend-bank-3fqd.onrender.com/api/opay/cards', {
+  const res = await axios.get('https://full-bank-app.onrender.com/api/opay/cards', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setCards(res.data.cards || []);
@@ -50,7 +50,7 @@ const Cards = () => {
     setMessage('');
     try {
       const token = localStorage.getItem('token');
-      await axios.post('https://backend-bank-3fqd.onrender.com/api/opay/cards/block', { type, status }, {
+  await axios.post('https://full-bank-app.onrender.com/api/opay/cards/block', { type, status }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCards(cards.map(card => card.type === type ? { ...card, status } : card));

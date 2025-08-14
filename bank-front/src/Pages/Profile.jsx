@@ -59,14 +59,14 @@ const Profile = () => {
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://backend-bank-3fqd.onrender.com/api/opay/notifications', { headers: { Authorization: `Bearer ${token}` } });
+  const res = await axios.get('https://full-bank-app.onrender.com/api/opay/notifications', { headers: { Authorization: `Bearer ${token}` } });
       setNotifications(res.data.notifications);
     } catch {}
   };
   const fetchSupport = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('https://backend-bank-3fqd.onrender.com/api/opay/support', { headers: { Authorization: `Bearer ${token}` } });
+  const res = await axios.get('https://full-bank-app.onrender.com/api/opay/support', { headers: { Authorization: `Bearer ${token}` } });
       setSupportRequests(res.data.supportRequests);
     } catch {}
   };
@@ -87,7 +87,7 @@ const Profile = () => {
         setProfileImage(reader.result);
         try {
           const token = localStorage.getItem('token');
-          const res = await axios.put('https://backend-bank-3fqd.onrender.com/api/auth/profile-image', { image: reader.result }, {
+          const res = await axios.put('https://full-bank-app.onrender.com/api/auth/profile-image', { image: reader.result }, {
             headers: { Authorization: `Bearer ${token}` }
           });
           setUser({ ...user, profileImage: res.data.profileImage });
@@ -161,7 +161,7 @@ const Profile = () => {
                     <button className="btn btn-outline-danger" onClick={async () => {
                       try {
                         const token = localStorage.getItem('token');
-                        await axios.post('https://backend-bank-3fqd.onrender.com/api/opay/2fa/disable', {}, { headers: { Authorization: `Bearer ${token}` } });
+                        await axios.post('https://full-bank-app.onrender.com/api/opay/2fa/disable', {}, { headers: { Authorization: `Bearer ${token}` } });
                         setTwoFAEnabled(false);
                         setTwoFASecret('');
                         setProfileMsg('2FA disabled.');
@@ -171,7 +171,7 @@ const Profile = () => {
                     <button className="btn btn-success" onClick={async () => {
                       try {
                         const token = localStorage.getItem('token');
-                        await axios.post('https://backend-bank-3fqd.onrender.com/api/opay/2fa/verify', { code: twoFACode }, { headers: { Authorization: `Bearer ${token}` } });
+                        await axios.post('https://full-bank-app.onrender.com/api/opay/2fa/verify', { code: twoFACode }, { headers: { Authorization: `Bearer ${token}` } });
                         setProfileMsg('2FA verified!');
                       } catch { setProfileMsg('Invalid 2FA code'); }
                     }}>Verify 2FA</button>
@@ -180,7 +180,7 @@ const Profile = () => {
                   <button className="btn btn-outline-info" onClick={async () => {
                     try {
                       const token = localStorage.getItem('token');
-                      const res = await axios.post('https://backend-bank-3fqd.onrender.com/api/opay/2fa/enable', {}, { headers: { Authorization: `Bearer ${token}` } });
+                      const res = await axios.post('https://full-bank-app.onrender.com/api/opay/2fa/enable', {}, { headers: { Authorization: `Bearer ${token}` } });
                       setTwoFAEnabled(true);
                       setTwoFASecret(res.data.secret);
                       setProfileMsg('2FA enabled. Enter the code sent to your email.');
@@ -200,7 +200,7 @@ const Profile = () => {
                       {!n.read && <button className="btn btn-sm btn-outline-success" onClick={async () => {
                         try {
                           const token = localStorage.getItem('token');
-                          await axios.post('https://backend-bank-3fqd.onrender.com/api/opay/notifications/read', { index: idx }, { headers: { Authorization: `Bearer ${token}` } });
+                          await axios.post('https://full-bank-app.onrender.com/api/opay/notifications/read', { index: idx }, { headers: { Authorization: `Bearer ${token}` } });
                           fetchNotifications();
                         } catch {}
                       }}>Mark as read</button>}
@@ -219,7 +219,7 @@ const Profile = () => {
                     const token = localStorage.getItem('token');
                     const reader = new FileReader();
                     reader.onloadend = async () => {
-                      await axios.put('https://backend-bank-3fqd.onrender.com/api/auth/kyc', { idImage: reader.result }, { headers: { Authorization: `Bearer ${token}` } });
+                      await axios.put('https://full-bank-app.onrender.com/api/auth/kyc', { idImage: reader.result }, { headers: { Authorization: `Bearer ${token}` } });
                       setKycStatus('pending');
                       setProfileMsg('KYC submitted!');
                     };
@@ -239,7 +239,7 @@ const Profile = () => {
                   <button className="btn btn-success" onClick={async () => {
                     try {
                       const token = localStorage.getItem('token');
-                      await axios.post('https://backend-bank-3fqd.onrender.com/api/opay/support', { subject: supportSubject, message: supportMessage }, { headers: { Authorization: `Bearer ${token}` } });
+                      await axios.post('https://full-bank-app.onrender.com/api/opay/support', { subject: supportSubject, message: supportMessage }, { headers: { Authorization: `Bearer ${token}` } });
                       setSupportSubject(''); setSupportMessage('');
                       setProfileMsg('Support request submitted!');
                       fetchSupport();

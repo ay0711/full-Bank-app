@@ -35,7 +35,7 @@ const Transfer = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('https://backend-bank-3fqd.onrender.com/api/banking/transfer', {
+  const response = await axios.post('https://full-bank-app.onrender.com/api/banking/transfer', {
         recipientAccountNumber: values.recipientAccountNumber,
         amount: parseFloat(values.amount),
         description: values.description
@@ -150,7 +150,7 @@ const Transfer = () => {
                       // Send to backend
                       const token = localStorage.getItem('token');
                       try {
-                        const res = await axios.put('https://backend-bank-3fqd.onrender.com/api/auth/profile-image', { image: base64 }, {
+                        const res = await axios.put('https://full-bank-app.onrender.com/api/auth/profile-image', { image: base64 }, {
                           headers: { Authorization: `Bearer ${token}` }
                         });
                         setUser({ ...user, profileImage: res.data.profileImage });
