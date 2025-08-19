@@ -36,10 +36,10 @@ const Dashboard = () => {
         setIsLoading(true);
         const [txRes, notifRes] = await Promise.all([
           axios.get(`${import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com/api/banking'}/transactions`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com/api/opay'}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
+          axios.get(`${import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com/api/opay'}/notification`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setTransactions(txRes.data.transactions || []);
-        setNotifications(notifRes.data.notifications || []);
+  setNotifications(notifRes.data.notifications || []);
         // Calculate analytics
         let totalSpent = 0, totalReceived = 0;
         (txRes.data.transactions || []).forEach(tx => {
@@ -239,7 +239,7 @@ const Dashboard = () => {
               <button className="btn btn-outline-primary rounded-pill px-4" onClick={() => navigate('/loans')}>Loans</button>
               <button className="btn btn-outline-success rounded-pill px-4" onClick={() => navigate('/support')}>Support</button>
               <button className="btn btn-outline-warning rounded-pill px-4" onClick={() => navigate('/me')}>Profile & Settings</button>
-              <button className="btn btn-outline-info rounded-pill px-4" onClick={() => navigate('/notifications')}>All Notifications</button>
+              <button className="btn btn-outline-info rounded-pill px-4" onClick={() => navigate('/notification')}>All Notifications</button>
             </div>
           </div>
         </div>
