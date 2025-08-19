@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ayBankCircle from '../../image/ay bank cirlcle.png';
 
 const Signup = () => {
@@ -187,7 +187,7 @@ const Signup = () => {
             <div className="card-footer text-center py-3">
               <small className="text-muted">
                 Already have an account? 
-                <a href="/signin" className="text-primary text-decoration-none ms-1">Sign In</a>
+                <Link to="/signin" className="text-primary text-decoration-none ms-1">Sign In</Link>
               </small>
             </div>
           </div>

@@ -3,7 +3,7 @@ import SloganSplash from '../components/SloganSplash';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import ayBankCircle from '../../image/ay bank cirlcle.png';
 
@@ -173,11 +173,12 @@ const Signin = () => {
             <div className="card-footer text-center py-3">
               <small className="text-muted">
                 Don't have an account? 
-                <a href="/" className="text-primary text-decoration-none ms-1">Sign Up</a>
+                <Link to="/" className="text-primary text-decoration-none ms-1">Sign Up</Link>
               </small>
               <br />
               <small className="text-muted">
-                <a href="#" className="text-primary text-decoration-none">Forgot Password?</a>
+                {/* Replace with a real route if you have a forgot password page */}
+                <Link to="#" className="text-primary text-decoration-none">Forgot Password?</Link>
               </small>
             </div>
           </div>
