@@ -184,11 +184,11 @@ const Dashboard = () => {
           <div className="col-md-6">
             <div className="bg-white rounded-4 shadow-sm p-4 h-100">
               <h6 className="fw-bold mb-3">Notifications</h6>
-              {notification.length === 0 ? (
+              {notifications.length === 0 ? (
                 <div className="text-muted small">No notifications</div>
               ) : (
                 <ul className="list-unstyled mb-0" style={{ maxHeight: 120, overflowY: 'auto' }}>
-                  {notification.slice(0, 4).map((notif, idx) => (
+                  {notifications.slice(0, 4).map((notif, idx) => (
                     <li key={idx} className="mb-2 d-flex align-items-start">
                       <i className="fas fa-bell text-warning me-2 mt-1"></i>
                       <div>
