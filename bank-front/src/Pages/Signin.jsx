@@ -173,7 +173,7 @@ const Signin = () => {
             <div className="card-footer text-center py-3">
               <small className="text-muted">
                 Don't have an account? 
-                <a href="/signup" className="text-primary text-decoration-none ms-1">Sign Up</a>
+                <a href="/" className="text-primary text-decoration-none ms-1">Sign Up</a>
               </small>
               <br />
               <small className="text-muted">
