@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
-const cors = require('cors')
-app.use(cors())
 // Get all notifications
 router.get('/notification', authenticateToken, async (req, res) => {
     try {
