@@ -1,3 +1,6 @@
+const express = require('express');
+const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
 // Get all notifications
 router.get('/notification', authenticateToken, async (req, res) => {
     try {
@@ -64,9 +67,7 @@ router.put('/support/:id/close', authenticateToken, async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
-const express = require('express');
-const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+
 
 // Get notification preferences
 router.get('/notification-prefs', authenticateToken, async (req, res) => {
