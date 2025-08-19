@@ -1,3 +1,69 @@
+// Get all notifications
+router.get('/notification', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json({ notifications: user.notifications || [] });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Mark notification as read
+router.put('/notification/:id/read', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        const notification = user.notifications.id(req.params.id);
+        if (!notification) return res.status(404).json({ message: 'Notification not found' });
+        notification.read = true;
+        await user.save();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get all support requests
+router.get('/support', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json({ supportRequests: user.supportRequests || [] });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Create a new support request
+router.post('/support', authenticateToken, async (req, res) => {
+    try {
+        const { subject, message } = req.body;
+        if (!subject || !message) return res.status(400).json({ message: 'Subject and message are required' });
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        user.supportRequests.push({ subject, message });
+        await user.save();
+        res.json({ success: true, supportRequests: user.supportRequests });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Close a support request
+router.put('/support/:id/close', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        const support = user.supportRequests.id(req.params.id);
+        if (!support) return res.status(404).json({ message: 'Support request not found' });
+        support.status = 'closed';
+        await user.save();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');

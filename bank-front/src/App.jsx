@@ -16,6 +16,8 @@ import Me from './Pages/Me';
 import Finances from './Pages/Finances';
 import Cards from './Pages/Cards';
 import AirtimeData from './Pages/AirtimeData';
+import Notification from './Pages/Notification';
+import Support from './Pages/Support';
 import AnimatedSplash from './components/AnimatedSplash';
 import SloganSplash from './components/SloganSplash';
 import './App.css';
@@ -60,6 +62,8 @@ function App() {
         <Route path="/finances" element={<Finances />} />
         <Route path="/cards" element={<Cards />} />
         <Route path="/airtime-data" element={<AirtimeData />} />
+        <Route path="/notification" element={<Notification />} />
+        <Route path="/support" element={<Support />} />
       </Routes>
     </div>
   );
