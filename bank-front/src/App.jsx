@@ -33,6 +33,22 @@ function AppWrapper() {
 }
 
 function App() {
+  function App() {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+          console.log(`SW registered: ${reg}`);
+          console.log(reg);
+        })
+        .catch(regError => {
+          console.log(`SW registration failed: ${regError}`);
+          console.log(regError);
+        })
+    }
+  }, [])
   const location = useLocation();
   const [showSplash, setShowSplash] = React.useState(false);
   const [splashKey, setSplashKey] = React.useState(0);
@@ -68,7 +84,8 @@ function App() {
     </div>
   );
 }
-
+}
 export default AppWrapper;
+
 
 // Removed duplicate default export
