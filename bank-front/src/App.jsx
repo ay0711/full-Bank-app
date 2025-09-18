@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import BackendLoader from './components/BackendLoader';
 import Signup from './Pages/Signup';
 import Signin from './Pages/Signin';
 import Dashboard from './Pages/DashboardNew';
@@ -33,8 +35,9 @@ function AppWrapper() {
 }
 
 function App() {
-  function App() {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
+  const [backendReady, setBackendReady] = useState(false);
+  const [showBackendLoader, setShowBackendLoader] = useState(true);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -48,7 +51,12 @@ function App() {
           console.log(regError);
         })
     }
-  }, [])
+  }, []);
+
+  const handleBackendReady = () => {
+    setBackendReady(true);
+    setShowBackendLoader(false);
+  };
   const location = useLocation();
   const [showSplash, setShowSplash] = React.useState(false);
   const [splashKey, setSplashKey] = React.useState(0);
@@ -61,6 +69,12 @@ function App() {
 
   return (
     <div className="App">
+      {showBackendLoader && (
+        <BackendLoader 
+          onReady={handleBackendReady}
+          autoStart={true}
+        />
+      )}
       <AnimatedSplash show={showSplash} key={splashKey} />
       <Routes>
         <Route path="/" element={<Signup />} />
@@ -83,7 +97,6 @@ function App() {
       </Routes>
     </div>
   );
-}
 }
 export default AppWrapper;
 

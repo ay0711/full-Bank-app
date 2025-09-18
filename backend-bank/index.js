@@ -38,6 +38,16 @@ app.get('/', (req, res) => {
     res.json({ message: 'SecureBank API is running!' });
 });
 
+// Health check endpoint for backend wake-up detection
+app.get('/api/auth/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'ok',
+        message: 'Backend is healthy and running',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
 app.listen(port, ()=>{
     console.log(`Server running on port ${port}`);
 })
