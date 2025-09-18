@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
@@ -33,7 +34,6 @@ function AppWrapper() {
 }
 
 function App() {
-  function App() {
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -83,7 +83,6 @@ function App() {
       </Routes>
     </div>
   );
-}
 }
 export default AppWrapper;
 
