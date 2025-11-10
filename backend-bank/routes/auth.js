@@ -1,187 +1,119 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { asyncHandler } = require('../middleware/errorHandler');
+
 // Get all notifications
-router.get('/notification', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ notifications: user.notifications || [] });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.get('/notification', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ notifications: user.notifications || [] });
+}));
 
 // Mark notification as read
-router.put('/notification/:id/read', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        const notification = user.notifications.id(req.params.id);
-        if (!notification) return res.status(404).json({ message: 'Notification not found' });
-        notification.read = true;
-        await user.save();
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.put('/notification/:id/read', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    const notification = user.notifications.id(req.params.id);
+    if (!notification) return res.status(404).json({ message: 'Notification not found' });
+    notification.read = true;
+    await user.save();
+    res.json({ success: true });
+}));
 
 // Get all support requests
-router.get('/support', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ supportRequests: user.supportRequests || [] });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.get('/support', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ supportRequests: user.supportRequests || [] });
+}));
 
 // Create a new support request
-router.post('/support', authenticateToken, async (req, res) => {
-    try {
-        const { subject, message } = req.body;
-        if (!subject || !message) return res.status(400).json({ message: 'Subject and message are required' });
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        user.supportRequests.push({ subject, message });
-        await user.save();
-        res.json({ success: true, supportRequests: user.supportRequests });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.post('/support', authenticateToken, asyncHandler(async (req, res) => {
+    const { subject, message } = req.body;
+    if (!subject || !message) return res.status(400).json({ message: 'Subject and message are required' });
+    const user = req.user;
+    user.supportRequests.push({ subject, message });
+    await user.save();
+    res.json({ success: true, supportRequests: user.supportRequests });
+}));
 
 // Close a support request
-router.put('/support/:id/close', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        const support = user.supportRequests.id(req.params.id);
-        if (!support) return res.status(404).json({ message: 'Support request not found' });
-        support.status = 'closed';
-        await user.save();
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.put('/support/:id/close', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    const support = user.supportRequests.id(req.params.id);
+    if (!support) return res.status(404).json({ message: 'Support request not found' });
+    support.status = 'closed';
+    await user.save();
+    res.json({ success: true });
+}));
 
 
 // Get notification preferences
-router.get('/notification-prefs', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ prefs: user.notificationPrefs || { email: true, sms: false, push: true } });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.get('/notification-prefs', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ prefs: user.notificationPrefs || { email: true, sms: false, push: true } });
+}));
 
 // Get privacy settings
-router.get('/privacy', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ privacy: user.privacy || { hideBalance: false, hideAccountNumber: false } });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.get('/privacy', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ privacy: user.privacy || { hideBalance: false, hideAccountNumber: false } });
+}));
 
 // Get theme settings
-router.get('/theme', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ theme: user.theme || { accent: '#00C853', fontSize: 16 } });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.get('/theme', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ theme: user.theme || { accent: '#00C853', fontSize: 16 } });
+}));
 
 // Get transaction limits
-router.get('/limits', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ limits: user.limits || { daily: 0, weekly: 0 } });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.get('/limits', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ limits: user.limits || { daily: 0, weekly: 0 } });
+}));
 
 // Get accessibility settings
-router.get('/accessibility', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ accessibility: user.accessibility || { highContrast: false, textSize: 16 } });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.get('/accessibility', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ accessibility: user.accessibility || { highContrast: false, textSize: 16 } });
+}));
 // Update app settings
-router.put('/app-settings', authenticateToken, async (req, res) => {
-    try {
-        const { darkMode, language, quickLogin } = req.body;
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        user.appSettings = {
-            darkMode: typeof darkMode === 'boolean' ? darkMode : user.appSettings.darkMode,
-            language: language || user.appSettings.language,
-            quickLogin: typeof quickLogin === 'boolean' ? quickLogin : user.appSettings.quickLogin
-        };
-        await user.save();
-        res.json({ success: true, settings: user.appSettings });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Get app settings
-router.get('/app-settings', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        res.json({ settings: user.appSettings || { darkMode: false, language: 'en', quickLogin: false } });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.put('/app-settings', authenticateToken, asyncHandler(async (req, res) => {
+    const { darkMode, language, quickLogin } = req.body;
+    const user = req.user;
+    user.appSettings = {
+        darkMode: typeof darkMode === 'boolean' ? darkMode : user.appSettings.darkMode,
+        language: language || user.appSettings.language,
+        quickLogin: typeof quickLogin === 'boolean' ? quickLogin : user.appSettings.quickLogin
+    };
+    await user.save();
+    res.json({ success: true, settings: user.appSettings });
+}));
 
+// Get app settings
+router.get('/app-settings', authenticateToken, asyncHandler(async (req, res) => {
+    const user = req.user;
+    res.json({ settings: user.appSettings || { darkMode: false, language: 'en', quickLogin: false } });
+}));
 
 // Update profile image
-router.put('/profile-image', authenticateToken, async (req, res) => {
-    try {
-        const { image } = req.body;
-        if (!image) return res.status(400).json({ message: 'No image provided' });
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        user.profileImage = image;
-        await user.save();
-        res.json({ message: 'Profile image updated', profileImage: user.profileImage });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.put('/profile-image', authenticateToken, asyncHandler(async (req, res) => {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ message: 'No image provided' });
+    const user = req.user;
+    user.profileImage = image;
+    await user.save();
+    res.json({ message: 'Profile image updated', profileImage: user.profileImage });
+}));
 
 // Update KYC info
-router.put('/kyc', authenticateToken, async (req, res) => {
-    try {
-        const { idImage } = req.body;
-        if (!idImage) return res.status(400).json({ message: 'No ID image provided' });
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
-        user.kyc.idImage = idImage;
-        user.kyc.status = 'pending';
-        await user.save();
-        res.json({ message: 'KYC submitted', kyc: user.kyc });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+router.put('/kyc', authenticateToken, asyncHandler(async (req, res) => {
+    const { idImage } = req.body;
+    if (!idImage) return res.status(400).json({ message: 'No ID image provided' });
+    const user = req.user;
+    user.kyc.idImage = idImage;
+    user.kyc.status = 'pending';
+    await user.save();
+    res.json({ message: 'KYC submitted', kyc: user.kyc });
+}));
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -276,45 +208,40 @@ router.post('/signup', async (req, res) => {
 });
 
 // Sign in route
-router.post('/signin', async (req, res) => {
-    try {
-        const { email, password } = req.body;
+router.post('/signin', asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
 
-        // Find user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid email or password' });
-        }
-
-        // Check password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(400).json({ message: 'Invalid email or password' });
-        }
-
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: {
-                id: user._id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                accountNumber: user.accountNumber,
-                accountBalance: user.accountBalance
-            }
-        });
-
-    } catch (error) {
-        res.status(500).json({ message: 'Internal server error' });
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(400).json({ message: 'Invalid email or password' });
     }
-});
+
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+        return res.status(400).json({ message: 'Invalid email or password' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+        { userId: user._id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+        message: 'Login successful',
+        token,
+        user: {
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            accountNumber: user.accountNumber,
+            accountBalance: user.accountBalance
+        }
+    });
+}));
 
 module.exports = router;
