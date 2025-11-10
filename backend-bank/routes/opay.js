@@ -6,12 +6,12 @@ const User = require('../models/User');
 
 // Cards endpoints
 router.get('/cards', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('cards').lean();
   res.json({ cards: user.cards || [] });
 });
 
 router.post('/cards/request', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('cards');
   const { type } = req.body;
   const last4 = Math.floor(1000 + Math.random() * 9000).toString();
   const card = { type, last4, status: 'active', createdAt: new Date() };
@@ -21,7 +21,7 @@ router.post('/cards/request', authenticateToken, async (req, res) => {
 });
 
 router.post('/cards/block', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('cards');
   const { type, status } = req.body;
   const card = user.cards.find(c => c.type === type);
   if (card) {
@@ -35,25 +35,37 @@ router.post('/cards/block', authenticateToken, async (req, res) => {
 // Airtime/Data endpoints
 router.post('/airtime', authenticateToken, async (req, res) => {
   // Simulate airtime purchase and add transaction
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('transactions accountBalance');
   const { amount, phone } = req.body;
-  user.transactions.push({ type: 'debit', amount, description: `Airtime for ${phone}` });
+  
+  if (user.accountBalance < amount) {
+    return res.status(400).json({ message: 'Insufficient balance' });
+  }
+  
+  user.accountBalance -= amount;
+  user.transactions.push({ type: 'debit', amount, description: `Airtime for ${phone}`, date: new Date() });
   await user.save();
   res.json({ message: 'Airtime purchased', amount, phone });
 });
 
 router.post('/data', authenticateToken, async (req, res) => {
   // Simulate data purchase and add transaction
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('transactions accountBalance');
   const { amount, phone } = req.body;
-  user.transactions.push({ type: 'debit', amount, description: `Data for ${phone}` });
+  
+  if (user.accountBalance < amount) {
+    return res.status(400).json({ message: 'Insufficient balance' });
+  }
+  
+  user.accountBalance -= amount;
+  user.transactions.push({ type: 'debit', amount, description: `Data for ${phone}`, date: new Date() });
   await user.save();
   res.json({ message: 'Data purchased', amount, phone });
 });
 
 // Fingerprint endpoints
 router.post('/fingerprint/enable', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('fingerprintEnabled');
   user.fingerprintEnabled = true;
   await user.save();
   res.json({ message: 'Fingerprint enabled' });
@@ -61,7 +73,7 @@ router.post('/fingerprint/enable', authenticateToken, async (req, res) => {
 
 router.post('/fingerprint/verify', async (req, res) => {
   // In a real app, verify fingerprint credential
-  const user = await User.findOne({ email: req.body.email });
+  const user = await User.findOne({ email: req.body.email }).select('email fingerprintEnabled');
   if (user && user.fingerprintEnabled) {
     return res.json({ message: 'Fingerprint verified', user: { email: user.email } });
   }
@@ -70,20 +82,20 @@ router.post('/fingerprint/verify', async (req, res) => {
 
 // Notifications endpoints
 router.get('/notifications', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('notifications').lean();
   res.json({ notifications: user.notifications || [] });
 });
 
 router.post('/notifications', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('notifications');
   const { message } = req.body;
-  user.notifications.push({ message });
+  user.notifications.push({ message, createdAt: new Date() });
   await user.save();
   res.json({ message: 'Notification added' });
 });
 
 router.post('/notifications/read', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('notifications');
   const { index } = req.body;
   if (user.notifications[index]) {
     user.notifications[index].read = true;
@@ -95,20 +107,20 @@ router.post('/notifications/read', authenticateToken, async (req, res) => {
 
 // Support endpoints
 router.get('/support', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('supportRequests').lean();
   res.json({ supportRequests: user.supportRequests || [] });
 });
 
 router.post('/support', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('supportRequests');
   const { subject, message } = req.body;
-  user.supportRequests.push({ subject, message });
+  user.supportRequests.push({ subject, message, createdAt: new Date() });
   await user.save();
   res.json({ message: 'Support request submitted' });
 });
 
 router.post('/support/close', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('supportRequests');
   const { index } = req.body;
   if (user.supportRequests[index]) {
     user.supportRequests[index].status = 'closed';
@@ -120,7 +132,7 @@ router.post('/support/close', authenticateToken, async (req, res) => {
 
 // 2FA endpoints
 router.post('/2fa/enable', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('twoFA');
   user.twoFA.enabled = true;
   user.twoFA.secret = Math.floor(100000 + Math.random() * 900000).toString(); // Simulate secret
   await user.save();
@@ -128,7 +140,7 @@ router.post('/2fa/enable', authenticateToken, async (req, res) => {
 });
 
 router.post('/2fa/disable', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('twoFA');
   user.twoFA.enabled = false;
   user.twoFA.secret = '';
   await user.save();
@@ -136,7 +148,7 @@ router.post('/2fa/disable', authenticateToken, async (req, res) => {
 });
 
 router.post('/2fa/verify', authenticateToken, async (req, res) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).select('twoFA');
   const { code } = req.body;
   if (user.twoFA.enabled && user.twoFA.secret === code) {
     return res.json({ message: '2FA verified' });

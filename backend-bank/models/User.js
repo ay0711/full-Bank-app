@@ -112,4 +112,8 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
+// Add indexes for frequently queried fields to improve performance
+userSchema.index({ email: 1 });
+userSchema.index({ accountNumber: 1 });
+
 module.exports = mongoose.model('User', userSchema);
