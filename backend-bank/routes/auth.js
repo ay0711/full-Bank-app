@@ -4,7 +4,7 @@ const { authenticateToken } = require('../middleware/auth');
 // Get all notifications
 router.get('/notification', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('notifications').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ notifications: user.notifications || [] });
     } catch (err) {
@@ -15,7 +15,7 @@ router.get('/notification', authenticateToken, async (req, res) => {
 // Mark notification as read
 router.put('/notification/:id/read', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('notifications');
         if (!user) return res.status(404).json({ message: 'User not found' });
         const notification = user.notifications.id(req.params.id);
         if (!notification) return res.status(404).json({ message: 'Notification not found' });
@@ -30,7 +30,7 @@ router.put('/notification/:id/read', authenticateToken, async (req, res) => {
 // Get all support requests
 router.get('/support', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('supportRequests').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ supportRequests: user.supportRequests || [] });
     } catch (err) {
@@ -43,7 +43,7 @@ router.post('/support', authenticateToken, async (req, res) => {
     try {
         const { subject, message } = req.body;
         if (!subject || !message) return res.status(400).json({ message: 'Subject and message are required' });
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('supportRequests');
         if (!user) return res.status(404).json({ message: 'User not found' });
         user.supportRequests.push({ subject, message });
         await user.save();
@@ -56,7 +56,7 @@ router.post('/support', authenticateToken, async (req, res) => {
 // Close a support request
 router.put('/support/:id/close', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('supportRequests');
         if (!user) return res.status(404).json({ message: 'User not found' });
         const support = user.supportRequests.id(req.params.id);
         if (!support) return res.status(404).json({ message: 'Support request not found' });
@@ -72,7 +72,7 @@ router.put('/support/:id/close', authenticateToken, async (req, res) => {
 // Get notification preferences
 router.get('/notification-prefs', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('notificationPrefs').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ prefs: user.notificationPrefs || { email: true, sms: false, push: true } });
     } catch (err) {
@@ -83,7 +83,7 @@ router.get('/notification-prefs', authenticateToken, async (req, res) => {
 // Get privacy settings
 router.get('/privacy', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('privacy').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ privacy: user.privacy || { hideBalance: false, hideAccountNumber: false } });
     } catch (err) {
@@ -94,7 +94,7 @@ router.get('/privacy', authenticateToken, async (req, res) => {
 // Get theme settings
 router.get('/theme', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('theme').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ theme: user.theme || { accent: '#00C853', fontSize: 16 } });
     } catch (err) {
@@ -105,7 +105,7 @@ router.get('/theme', authenticateToken, async (req, res) => {
 // Get transaction limits
 router.get('/limits', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('limits').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ limits: user.limits || { daily: 0, weekly: 0 } });
     } catch (err) {
@@ -116,7 +116,7 @@ router.get('/limits', authenticateToken, async (req, res) => {
 // Get accessibility settings
 router.get('/accessibility', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('accessibility').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ accessibility: user.accessibility || { highContrast: false, textSize: 16 } });
     } catch (err) {
@@ -127,7 +127,7 @@ router.get('/accessibility', authenticateToken, async (req, res) => {
 router.put('/app-settings', authenticateToken, async (req, res) => {
     try {
         const { darkMode, language, quickLogin } = req.body;
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('appSettings');
         if (!user) return res.status(404).json({ message: 'User not found' });
         user.appSettings = {
             darkMode: typeof darkMode === 'boolean' ? darkMode : user.appSettings.darkMode,
@@ -143,7 +143,7 @@ router.put('/app-settings', authenticateToken, async (req, res) => {
 // Get app settings
 router.get('/app-settings', authenticateToken, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('appSettings').lean();
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ settings: user.appSettings || { darkMode: false, language: 'en', quickLogin: false } });
     } catch (err) {
@@ -157,7 +157,7 @@ router.put('/profile-image', authenticateToken, async (req, res) => {
     try {
         const { image } = req.body;
         if (!image) return res.status(400).json({ message: 'No image provided' });
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('profileImage');
         if (!user) return res.status(404).json({ message: 'User not found' });
         user.profileImage = image;
         await user.save();
@@ -172,7 +172,7 @@ router.put('/kyc', authenticateToken, async (req, res) => {
     try {
         const { idImage } = req.body;
         if (!idImage) return res.status(400).json({ message: 'No ID image provided' });
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user._id).select('kyc');
         if (!user) return res.status(404).json({ message: 'User not found' });
         user.kyc.idImage = idImage;
         user.kyc.status = 'pending';
@@ -202,22 +202,32 @@ router.post('/signup', async (req, res) => {
         if (!firstName || !lastName || !email || !password) {
             return res.status(400).json({ message: 'All fields are required' });
         }
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email }).select('_id');
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists with this email' });
         }
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+        // Generate account number with retry limit to prevent infinite loops
         let accountNumber;
         let isUnique = false;
-        while (!isUnique) {
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (!isUnique && attempts < maxAttempts) {
             accountNumber = generateAccountNumber();
-            const existingAccount = await User.findOne({ accountNumber });
+            const existingAccount = await User.findOne({ accountNumber }).select('_id');
             if (!existingAccount) {
                 isUnique = true;
             }
+            attempts++;
         }
+        
+        if (!isUnique) {
+            return res.status(500).json({ message: 'Unable to generate unique account number. Please try again.' });
+        }
+        
         const newUser = new User({
             firstName,
             lastName,
@@ -230,11 +240,13 @@ router.post('/signup', async (req, res) => {
         await newUser.save();
 
 
-        try {
-            await sendWelcomeEmail(email, firstName, accountNumber);
-        } catch (emailError) {
-            // Email sending failed silently
-        }
+        // Send welcome email asynchronously without blocking the response
+        setImmediate(() => {
+            sendWelcomeEmail(email, firstName, accountNumber).catch(() => {
+                // Email sending failed silently
+            });
+        });
+        
         if (!process.env.JWT_SECRET) {
             return res.status(500).json({ message: 'Server configuration error' });
         }
@@ -280,8 +292,8 @@ router.post('/signin', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Find user by email
-        const user = await User.findOne({ email });
+        // Find user by email with only necessary fields
+        const user = await User.findOne({ email }).select('_id firstName lastName email password accountNumber accountBalance');
         if (!user) {
             return res.status(400).json({ message: 'Invalid email or password' });
         }
