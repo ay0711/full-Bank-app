@@ -2,6 +2,7 @@
  * Backend Wake-up Service
  * Handles waking up backends on free tier hosting (e.g., Render)
  * Implements retry logic with exponential backoff
+ * Once backend is confirmed awake, it doesn't check again until session ends or app reloads
  */
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com';
@@ -9,10 +10,36 @@ const WAKE_UP_TIMEOUT = 3000; // 3 seconds per attempt
 const MAX_RETRIES = 4; // Try up to 4 times
 const BACKOFF_MULTIPLIER = 1.5; // Exponential backoff factor
 
-// Status tracking
+// Status tracking (in-memory for current session)
 let isBackendAwake = false;
 let wakeUpPromise = null;
 let wakeUpAttempts = 0;
+
+/**
+ * Check if backend was marked as awake in this browser session
+ * @returns {boolean} True if backend was already confirmed awake
+ */
+const getBackendStatus = () => {
+  try {
+    const stored = sessionStorage.getItem('backendAwake');
+    return stored === 'true';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Mark backend as awake in session storage
+ * This persists only for the current browser session
+ */
+const setBackendAwake = () => {
+  try {
+    sessionStorage.setItem('backendAwake', 'true');
+    isBackendAwake = true;
+  } catch {
+    isBackendAwake = true;
+  }
+};
 
 /**
  * Ping the backend to check if it's alive
@@ -53,12 +80,21 @@ export const pingBackend = async () => {
 
 /**
  * Wake up the backend with exponential backoff retry logic
+ * Once successful, won't check again in the same session
  * @param {Function} onProgress - Callback for progress updates
  * @returns {Promise<boolean>} True if backend is awake, false if timeout
  */
 export const wakeUpBackend = async (onProgress = null) => {
-  // If already awake, return immediately
-  if (isBackendAwake) {
+  // Check if backend status is already cached in this session
+  if (getBackendStatus() || isBackendAwake) {
+    if (onProgress) {
+      onProgress({
+        attempt: 1,
+        maxAttempts: 1,
+        success: true,
+        message: 'Backend is ready!',
+      });
+    }
     return true;
   }
 
@@ -94,7 +130,9 @@ export const wakeUpBackend = async (onProgress = null) => {
       const isAwake = await pingBackend();
 
       if (isAwake) {
-        isBackendAwake = true;
+        // Mark backend as awake for this session
+        setBackendAwake();
+        
         if (onProgress) {
           onProgress({
             attempt: wakeUpAttempts,
@@ -130,10 +168,18 @@ export const wakeUpBackend = async (onProgress = null) => {
 
 /**
  * Manual retry function for UI to trigger another wake-up attempt
+ * Clears session status to allow another attempt
  * @param {Function} onProgress - Callback for progress updates
  * @returns {Promise<boolean>}
  */
 export const retryBackendWakeup = async (onProgress = null) => {
+  // Clear the session cache so it will check again
+  try {
+    sessionStorage.removeItem('backendAwake');
+  } catch {
+    // Ignore if sessionStorage not available
+  }
+  
   isBackendAwake = false;
   wakeUpPromise = null;
   wakeUpAttempts = 0;
@@ -141,9 +187,16 @@ export const retryBackendWakeup = async (onProgress = null) => {
 };
 
 /**
- * Reset the backend wake-up state
+ * Reset the backend wake-up state (clears session cache)
+ * Useful when switching sessions or logging out
  */
 export const resetBackendState = () => {
+  try {
+    sessionStorage.removeItem('backendAwake');
+  } catch {
+    // Ignore if sessionStorage not available
+  }
+  
   isBackendAwake = false;
   wakeUpPromise = null;
   wakeUpAttempts = 0;

@@ -5,6 +5,7 @@ import '../styles/BackendLoader.css';
 /**
  * Backend Loader Component
  * Shows progress while waking up the backend on free tier hosting
+ * Only shows once per session - doesn't re-check if already confirmed awake
  */
 const BackendLoader = ({ onReady, autoStart = true }) => {
   const [status, setStatus] = useState('connecting');
@@ -12,9 +13,20 @@ const BackendLoader = ({ onReady, autoStart = true }) => {
   const [attempt, setAttempt] = useState(0);
   const [maxAttempts, setMaxAttempts] = useState(0);
   const [showRetry, setShowRetry] = useState(false);
+  const [shouldShow, setShouldShow] = useState(true);
 
   useEffect(() => {
     if (!autoStart) return;
+
+    // Check if backend is already marked as awake in this session
+    const backendAwake = sessionStorage.getItem('backendAwake') === 'true';
+    
+    if (backendAwake) {
+      // Backend already confirmed awake - skip loader
+      setShouldShow(false);
+      onReady?.();
+      return;
+    }
 
     const startWakeup = async () => {
       const success = await wakeUpBackend((progress) => {
@@ -25,6 +37,7 @@ const BackendLoader = ({ onReady, autoStart = true }) => {
         if (progress.success) {
           setStatus('ready');
           setTimeout(() => {
+            setShouldShow(false);
             onReady?.();
           }, 500);
         } else if (progress.success === false) {
@@ -42,6 +55,11 @@ const BackendLoader = ({ onReady, autoStart = true }) => {
     startWakeup();
   }, [autoStart, onReady]);
 
+  // If backend is already awake in session, skip rendering completely
+  if (!shouldShow) {
+    return null;
+  }
+
   const handleRetry = async () => {
     setShowRetry(false);
     setStatus('connecting');
@@ -56,6 +74,7 @@ const BackendLoader = ({ onReady, autoStart = true }) => {
       if (progress.success) {
         setStatus('ready');
         setTimeout(() => {
+          setShouldShow(false);
           onReady?.();
         }, 500);
       } else if (progress.success === false) {
