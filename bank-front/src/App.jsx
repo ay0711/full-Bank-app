@@ -35,9 +35,13 @@ function AppWrapper() {
 }
 
 function App() {
+<<<<<<< HEAD
   const [count, setCount] = useState(0);
   const [backendReady, setBackendReady] = useState(false);
   const [showBackendLoader, setShowBackendLoader] = useState(true);
+=======
+  const [count, setCount] = useState(0)
+>>>>>>> 84709e41a115dd6d5c84d8d98d67eeffb272d99a
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
