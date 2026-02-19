@@ -605,7 +605,8 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
         // Update status if fully repaid
         if (application.totalRepaid >= application.amount) {
             application.status = 'repaid';
-        } else if (!application.status.includes('partial')) {
+        } else if (application.totalRepaid > 0) {
+            // Mark as partial repayment if not fully repaid
             application.status = 'partial-repayment';
         }
 
