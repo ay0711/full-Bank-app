@@ -413,7 +413,7 @@ router.post('/loans/apply', authenticateToken, async (req, res) => {
         }
 
         if (amount < selectedLoan.minAmount || amount > selectedLoan.maxAmount) {
-            return res.status(400).json({ message: 'Amount is خارج allowed range' });
+            return res.status(400).json({ message: 'Amount is out of allowed range' });
         }
 
         const user = await User.findById(req.user._id);

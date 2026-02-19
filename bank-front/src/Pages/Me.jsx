@@ -1718,38 +1718,6 @@ const Me = () => {
         </div>
       )}
 
-      {/* Upgrade Confirmation Modal */}
-      <ConfirmModal
-        show={showUpgradeConfirm}
-        onClose={() => { setShowUpgradeConfirm(false); setPendingUpgrade(null); }}
-        onConfirm={async () => {
-          if (!pendingUpgrade) return;
-          try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(
-              API_ENDPOINTS.UPGRADE_ACCOUNT,
-              { accountType: pendingUpgrade.plan },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            if (res.data.user) {
-              const updatedUser = res.data.user;
-              setUser(updatedUser);
-              localStorage.setItem('user', JSON.stringify(updatedUser));
-              setShowUpgradeConfirm(false);
-              setPendingUpgrade(null);
-            }
-          } catch (err) {
-            setShowUpgradeConfirm(false);
-            setPendingUpgrade(null);
-          }
-        }}
-        title="Upgrade Account"
-        message={`Upgrade to ${pendingUpgrade?.name}? | Cost: ₦${pendingUpgrade?.price} | This will be deducted from your balance.`}
-        confirmText="Upgrade"
-        confirmColor="#10B981"
-        isDarkMode={isDarkMode}
-      />
-
       {/* Logout Confirmation Modal */}
       <ConfirmModal
         show={showLogoutConfirm}
