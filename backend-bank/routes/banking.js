@@ -141,18 +141,34 @@ router.post('/transfer', authenticateToken, async (req, res) => {
         await sender.save();
         await recipient.save();
 
-        // Send transaction emails
-        try {
-            await sendTransactionEmail(sender.email, `${sender.firstName} ${sender.lastName}`, 'debit', amount, senderTransaction.description, sender.accountBalance);
-            await sendTransactionEmail(recipient.email, `${recipient.firstName} ${recipient.lastName}`, 'credit', amount, recipientTransaction.description, recipient.accountBalance);
-        } catch (err) {
-            // Email errors are silent
-        }
-
+        // Respond immediately, then send emails in the background
         res.status(200).json({
             message: 'Transfer successful',
             newBalance: sender.accountBalance,
             transaction: senderTransaction
+        });
+
+        setImmediate(async () => {
+            try {
+                await sendTransactionEmail(
+                    sender.email,
+                    `${sender.firstName} ${sender.lastName}`,
+                    'debit',
+                    amount,
+                    senderTransaction.description,
+                    sender.accountBalance
+                );
+                await sendTransactionEmail(
+                    recipient.email,
+                    `${recipient.firstName} ${recipient.lastName}`,
+                    'credit',
+                    amount,
+                    recipientTransaction.description,
+                    recipient.accountBalance
+                );
+            } catch (err) {
+                console.warn('Transfer email send failed:', err.message);
+            }
         });
 
     } catch (error) {
