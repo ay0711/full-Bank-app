@@ -194,6 +194,58 @@ router.get('/transactions', authenticateToken, async (req, res) => {
     }
 });
 
+// Get recent transfer recipients
+router.get('/recipients', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('transactions');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const debitTransfers = user.transactions
+            .filter(tx => tx.type === 'debit' && tx.recipientAccountNumber)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const seen = new Set();
+        const recentAccounts = [];
+        for (const tx of debitTransfers) {
+            if (!seen.has(tx.recipientAccountNumber)) {
+                seen.add(tx.recipientAccountNumber);
+                recentAccounts.push(tx.recipientAccountNumber);
+            }
+            if (recentAccounts.length >= 10) {
+                break;
+            }
+        }
+
+        if (recentAccounts.length === 0) {
+            return res.status(200).json({ recipients: [] });
+        }
+
+        const recipientsData = await User.find({
+            accountNumber: { $in: recentAccounts }
+        }).select('firstName lastName accountNumber').lean();
+
+        const recipientMap = new Map(
+            recipientsData.map(rec => [rec.accountNumber, rec])
+        );
+
+        const recipients = recentAccounts
+            .slice(0, 5)
+            .map(accountNumber => {
+                const rec = recipientMap.get(accountNumber);
+                return {
+                    accountNumber,
+                    name: rec ? `${rec.firstName} ${rec.lastName}` : accountNumber
+                };
+            });
+
+        res.status(200).json({ recipients });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 // Fund account
 router.post('/fund', authenticateToken, async (req, res) => {
     try {
