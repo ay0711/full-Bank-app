@@ -1,83 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import PageLayout, { COLORS } from '../components/PageLayout';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-
-
-// Simple avatar generator (initials)
-function generateAvatar(name) {
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
-  return `https://ui-avatars.com/api/?name=${initials}&background=random&size=128`;
-}
-
-const Profile = () => {
-  const navigate = useNavigate();
-  const { user, setUser, isDarkMode } = useAppContext();
-  // Defensive: fallback to defaults if user fields are missing
-  const [profileImage, setProfileImage] = useState(user && user.profileImage ? user.profileImage : '');
-  const [showModal, setShowModal] = useState(false);
-  const [fingerprintEnabled, setFingerprintEnabled] = useState(user && typeof user.fingerprintEnabled === 'boolean' ? user.fingerprintEnabled : false);
-  const [twoFAEnabled, setTwoFAEnabled] = useState(user && user.twoFA && typeof user.twoFA.enabled === 'boolean' ? user.twoFA.enabled : false);
-  const [twoFASecret, setTwoFASecret] = useState('');
-  const [twoFACode, setTwoFACode] = useState('');
-  const [kycStatus, setKycStatus] = useState(user && user.kyc && user.kyc.status ? user.kyc.status : 'unverified');
-  const [kycFile, setKycFile] = useState(null);
-  const [profileMsg, setProfileMsg] = useState('');
-  const [notifications, setNotifications] = useState([]);
-  const [supportRequests, setSupportRequests] = useState([]);
-  const [supportSubject, setSupportSubject] = useState('');
-  const [supportMessage, setSupportMessage] = useState('');
-
-  const handleFingerprintToggle = async () => {
-    setFingerprintEnabled(!fingerprintEnabled);
-    // Persist to backend or localStorage
-    const updatedUser = { ...user, fingerprintEnabled: !fingerprintEnabled };
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    // Optionally: await axios.post('/api/auth/fingerprint', { enabled: !fingerprintEnabled });
-  };
-
-// Simple avatar generator (initials)
-function generateAvatar(name) {
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
-  return `https://ui-avatars.com/api/?name=${initials}&background=random&size=128`;
-}
+import axios from 'axios';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user, setUser, isDarkMode } = useAppContext();
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
-  const [showModal, setShowModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [kycStatus, setKycStatus] = useState(user?.kyc?.status || 'unverified');
+  const [message, setMessage] = useState('');
+  const [kycFile, setKycFile] = useState(null);
 
-  // Persist image after refresh and fetch notifications/support
   useEffect(() => {
     setProfileImage(user?.profileImage || '');
-    fetchNotifications();
-    fetchSupport();
   }, [user]);
-
-  const fetchNotifications = async () => {
-    try {
-      const token = localStorage.getItem('token');
-  const res = await axios.get('https://full-bank-app.onrender.com/api/opay/notifications', { headers: { Authorization: `Bearer ${token}` } });
-      setNotifications(res.data.notifications);
-    } catch {}
-  };
-  const fetchSupport = async () => {
-    try {
-      const token = localStorage.getItem('token');
-  const res = await axios.get('https://full-bank-app.onrender.com/api/opay/support', { headers: { Authorization: `Bearer ${token}` } });
-      setSupportRequests(res.data.supportRequests);
-    } catch {}
-  };
-
-  if (!user) {
-    return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
-        <div className="spinner-border" />
-      </div>
-    );
-  }
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -87,187 +25,501 @@ const Profile = () => {
         setProfileImage(reader.result);
         try {
           const token = localStorage.getItem('token');
-          const res = await axios.put('https://full-bank-app.onrender.com/api/auth/profile-image', { image: reader.result }, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const res = await axios.put(
+            'https://full-bank-app.onrender.com/api/auth/profile-image',
+            { image: reader.result },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
           setUser({ ...user, profileImage: res.data.profileImage });
-        } catch (err) {
-          // Optionally show error
+          setMessage('Profile image updated!');
+          setShowImageModal(false);
+          setTimeout(() => setMessage(''), 3000);
+        } catch {
+          setMessage('Failed to update image');
+          setTimeout(() => setMessage(''), 3000);
         }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  return (
-    <div className={`container py-5 min-vh-100 ${isDarkMode ? 'bg-dark text-light' : 'bg-light'}`}> 
-      <div className="row justify-content-center">
-        <div className="col-md-8">
-          <div className={`card shadow-lg border-0 mb-4 ${isDarkMode ? 'bg-dark text-light border-secondary' : 'bg-white'}`}> 
-            <div className="card-body text-center">
-              {/* Navigation Buttons */}
-              <div className="mb-3 d-flex justify-content-between">
-                <button className={`btn ${isDarkMode ? 'btn-outline-light' : 'btn-outline-dark'} rounded-pill`} onClick={() => navigate && navigate('/dashboard')}>
-                  <i className="fas fa-arrow-left me-2"></i>Back to Dashboard
-                </button>
-                <button className="btn btn-outline-success rounded-pill" onClick={() => navigate && navigate('/')}>Log Out</button>
-              </div>
-              {/* Profile Section */}
-              <div className="mb-3">
-                <div style={{ position: 'relative', display: 'inline-block' }}>
-                  {profileImage ? (
-                    <img src={profileImage} alt="Profile" className="rounded-circle border" style={{ width: 100, height: 100, objectFit: 'cover', border: '3px solid #00C853' }} />
-                  ) : (
-                    <img src={generateAvatar(`${user.firstName} ${user.lastName}`)} alt="Avatar" className="rounded-circle border" style={{ width: 100, height: 100, border: '3px solid #00C853' }} />
-                  )}
-                  <span
-                    style={{ position: 'absolute', right: 0, bottom: 0, background: '#00C853', borderRadius: '50%', padding: 8, cursor: 'pointer' }}
-                    onClick={() => setShowModal(true)}
-                  >
-                    <i className="fas fa-camera text-white"></i>
-                  </span>
-                </div>
-                <h4 className="mt-3 mb-0">{user.firstName || ''} {user.lastName || ''}</h4>
-                <small className="text-muted">{user.accountNumber || ''}</small>
-              </div>
+  const handleKYCUpload = async () => {
+    if (!kycFile) return;
+    try {
+      const token = localStorage.getItem('token');
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        await axios.put(
+          'https://full-bank-app.onrender.com/api/auth/kyc',
+          { idImage: reader.result },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setKycStatus('pending');
+        setMessage('KYC document submitted! Pending verification.');
+        setKycFile(null);
+        setTimeout(() => setMessage(''), 3000);
+      };
+      reader.readAsDataURL(kycFile);
+    } catch {
+      setMessage('Failed to upload KYC document');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  };
 
-              {/* Modal for image upload */}
-              {showModal && (
-                <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog modal-dialog-centered">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Update Profile Image</h5>
-                        <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-                      </div>
-                      <div className="modal-body">
-                        <input type="file" accept="image/*" onChange={handleImageChange} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <hr />
-              {/* Security Section */}
-              <h5 className="mt-4">Security</h5>
-              <div className="form-check form-switch mb-3">
-                <input className="form-check-input" type="checkbox" id="fingerprintSwitch" checked={fingerprintEnabled} onChange={handleFingerprintToggle} />
-                <label className="form-check-label" htmlFor="fingerprintSwitch">Enable Fingerprint Sign-in</label>
-              </div>
-              <div className="d-grid gap-2 mb-3">
-                <button className="btn btn-outline-secondary">Change Password</button>
-                {twoFAEnabled ? (
-                  <>
-                    <button className="btn btn-outline-danger" onClick={async () => {
-                      try {
-                        const token = localStorage.getItem('token');
-                        await axios.post('https://full-bank-app.onrender.com/api/opay/2fa/disable', {}, { headers: { Authorization: `Bearer ${token}` } });
-                        setTwoFAEnabled(false);
-                        setTwoFASecret('');
-                        setProfileMsg('2FA disabled.');
-                      } catch { setProfileMsg('Failed to disable 2FA'); }
-                    }}>Disable 2FA</button>
-                    <input type="text" className="form-control my-2" placeholder="Enter 2FA code" value={twoFACode} onChange={e => setTwoFACode(e.target.value)} />
-                    <button className="btn btn-success" onClick={async () => {
-                      try {
-                        const token = localStorage.getItem('token');
-                        await axios.post('https://full-bank-app.onrender.com/api/opay/2fa/verify', { code: twoFACode }, { headers: { Authorization: `Bearer ${token}` } });
-                        setProfileMsg('2FA verified!');
-                      } catch { setProfileMsg('Invalid 2FA code'); }
-                    }}>Verify 2FA</button>
-                  </>
-                ) : (
-                  <button className="btn btn-outline-info" onClick={async () => {
-                    try {
-                      const token = localStorage.getItem('token');
-                      const res = await axios.post('https://full-bank-app.onrender.com/api/opay/2fa/enable', {}, { headers: { Authorization: `Bearer ${token}` } });
-                      setTwoFAEnabled(true);
-                      setTwoFASecret(res.data.secret);
-                      setProfileMsg('2FA enabled. Enter the code sent to your email.');
-                    } catch { setProfileMsg('Failed to enable 2FA'); }
-                  }}>Enable 2FA</button>
-                )}
-              </div>
-              {/* Notifications Section */}
-              <h5 className="mt-4">Notifications</h5>
-              <div className="mb-3 text-start">
-                <ul className="list-group">
-                  {notifications.length === 0 ? (
-                    <li className="list-group-item">No notifications yet</li>
-                  ) : notifications.map((n, idx) => (
-                    <li className={`list-group-item d-flex justify-content-between align-items-center ${n.read ? 'text-muted' : ''}`} key={idx}>
-                      {n.message}
-                      {!n.read && <button className="btn btn-sm btn-outline-success" onClick={async () => {
-                        try {
-                          const token = localStorage.getItem('token');
-                          await axios.post('https://full-bank-app.onrender.com/api/opay/notifications/read', { index: idx }, { headers: { Authorization: `Bearer ${token}` } });
-                          fetchNotifications();
-                        } catch {}
-                      }}>Mark as read</button>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              {/* KYC Section */}
-              <h5 className="mt-4">KYC Verification</h5>
-              <div className="mb-3">
-                <p>Status: <strong>{kycStatus}</strong></p>
-                <input type="file" accept="image/*" className="form-control mb-2" onChange={e => setKycFile(e.target.files[0])} />
-                <button className="btn btn-outline-success" onClick={async () => {
-                  if (!kycFile) return;
-                  try {
-                    const token = localStorage.getItem('token');
-                    const reader = new FileReader();
-                    reader.onloadend = async () => {
-                      await axios.put('https://full-bank-app.onrender.com/api/auth/kyc', { idImage: reader.result }, { headers: { Authorization: `Bearer ${token}` } });
-                      setKycStatus('pending');
-                      setProfileMsg('KYC submitted!');
-                    };
-                    reader.readAsDataURL(kycFile);
-                  } catch { setProfileMsg('Failed to upload KYC'); }
-                }}>Upload ID</button>
-              </div>
-              {/* Other Actions */}
-              <hr />
-              <div className="d-grid gap-2">
-                <button className="btn btn-outline-primary">Edit Profile</button>
-                {/* Support section */}
-                <div className="card p-3 my-2">
-                  <h6>Support Request</h6>
-                  <input type="text" className="form-control mb-2" placeholder="Subject" value={supportSubject} onChange={e => setSupportSubject(e.target.value)} />
-                  <textarea className="form-control mb-2" placeholder="Message" value={supportMessage} onChange={e => setSupportMessage(e.target.value)} />
-                  <button className="btn btn-success" onClick={async () => {
-                    try {
-                      const token = localStorage.getItem('token');
-                      await axios.post('https://full-bank-app.onrender.com/api/opay/support', { subject: supportSubject, message: supportMessage }, { headers: { Authorization: `Bearer ${token}` } });
-                      setSupportSubject(''); setSupportMessage('');
-                      setProfileMsg('Support request submitted!');
-                      fetchSupport();
-                    } catch { setProfileMsg('Failed to submit support request'); }
-                  }}>Submit</button>
-                </div>
-                <div className="card p-3 my-2">
-                  <h6>My Support Requests</h6>
-                  <ul className="list-group">
-                    {supportRequests.length === 0 ? (
-                      <li className="list-group-item">No support requests yet</li>
-                    ) : supportRequests.map((s, idx) => (
-                      <li className="list-group-item d-flex justify-content-between align-items-center" key={idx}>
-                        <span>{s.subject}: {s.message}</span>
-                        <span className={`badge ${s.status === 'open' ? 'bg-info' : 'bg-secondary'}`}>{s.status}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <button className="btn btn-outline-warning">Settings</button>
-              </div>
+  const generateAvatar = (name) => {
+    const initials = name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase();
+    return `https://ui-avatars.com/api/?name=${initials}&background=random&size=128`;
+  };
+
+  return (
+    <PageLayout pageTitle="My Profile" pageSubtitle="Manage your account and personal information">
+      {/* Success/Error Message */}
+      {message && (
+        <div
+          style={{
+            background: message.includes('successfully') || message.includes('updated') || message.includes('submitted')
+              ? COLORS.success
+              : COLORS.danger,
+            color: 'white',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '24px'
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      <div className="row g-4 mb-5">
+        {/* Profile Overview Card */}
+        <div className="col-lg-4">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '28px',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              textAlign: 'center'
+            }}
+          >
+            {/* Profile Image */}
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
+              <img
+                src={profileImage || generateAvatar(`${user?.firstName} ${user?.lastName}`)}
+                alt="Profile"
+                style={{
+                  width: '100px',
+                  height: '100px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: `3px solid ${COLORS.primary}`
+                }}
+              />
+              <button
+                onClick={() => setShowImageModal(true)}
+                style={{
+                  position: 'absolute',
+                  right: '0',
+                  bottom: '0',
+                  background: COLORS.primary,
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <i className="fas fa-camera" style={{ color: 'white', fontSize: '16px' }}></i>
+              </button>
+            </div>
+
+            {/* Profile Info */}
+            <h5 className="fw-bold mb-2" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              {user?.firstName} {user?.lastName}
+            </h5>
+            <p className="small mb-3" style={{ color: COLORS.lightText }}>
+              {user?.email}
+            </p>
+
+            {/* Account Number & Type */}
+            <div
+              style={{
+                background: isDarkMode ? '#374151' : COLORS.light,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}
+            >
+              <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                Account Number
+              </p>
+              <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                {user?.accountNumber}
+              </p>
+            </div>
+
+            {/* Account Status Badge */}
+            <div
+              style={{
+                background: COLORS.success,
+                color: 'white',
+                borderRadius: '12px',
+                padding: '12px',
+                fontSize: '0.875rem',
+                fontWeight: 'bold'
+              }}
+            >
+              <i className="fas fa-check me-2"></i>
+              Active Account
             </div>
           </div>
         </div>
+
+        {/* Account Information */}
+        <div className="col-lg-8">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '28px',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              marginBottom: '20px'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              Account Information
+            </h5>
+
+            <div className="row g-3">
+              <div className="col-md-6">
+                <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                  First Name
+                </p>
+                <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  {user?.firstName}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                  Last Name
+                </p>
+                <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  {user?.lastName}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                  Email Address
+                </p>
+                <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  {user?.email}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                  Phone Number
+                </p>
+                <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  {user?.phoneNumber || 'Not provided'}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                  Account Type
+                </p>
+                <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  {user?.accountType || 'Standard'}
+                </p>
+              </div>
+              <div className="col-md-6">
+                <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                  Account Status
+                </p>
+                <p
+                  className="fw-bold"
+                  style={{
+                    color: COLORS.success
+                  }}
+                >
+                  Active
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate('/me')}
+              className="btn w-100 mt-4"
+              style={{
+                background: COLORS.primary,
+                color: 'white',
+                borderRadius: '12px',
+                border: 'none',
+                padding: '12px'
+              }}
+            >
+              <i className="fas fa-edit me-2"></i>
+              Edit Profile
+            </button>
+          </div>
+
+          {/* KYC Verification */}
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '28px',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              KYC Verification
+            </h5>
+
+            <div
+              style={{
+                background: isDarkMode ? '#374151' : COLORS.light,
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '16px'
+              }}
+            >
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <p className="small mb-1" style={{ color: COLORS.lightText }}>
+                    Verification Status
+                  </p>
+                  <p
+                    className="fw-bold"
+                    style={{
+                      color:
+                        kycStatus === 'verified'
+                          ? COLORS.success
+                          : kycStatus === 'pending'
+                            ? COLORS.warning
+                            : COLORS.danger
+                    }}
+                  >
+                    {kycStatus.charAt(0).toUpperCase() + kycStatus.slice(1)}
+                  </p>
+                </div>
+                <div style={{ fontSize: '1.75rem' }}>
+                  {kycStatus === 'verified' ? '✅' : kycStatus === 'pending' ? '⏳' : '⚠️'}
+                </div>
+              </div>
+            </div>
+
+            {kycStatus === 'unverified' && (
+              <>
+                <p className="small mb-3" style={{ color: COLORS.lightText }}>
+                  Upload a valid ID document (Passport, Driver's License, or National ID) to complete KYC verification.
+                </p>
+                <div className="mb-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="form-control"
+                    onChange={(e) => setKycFile(e.target.files[0])}
+                    style={{
+                      background: isDarkMode ? '#374151' : COLORS.light,
+                      border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                      borderRadius: '12px',
+                      color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                      padding: '12px 16px'
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleKYCUpload}
+                  disabled={!kycFile}
+                  className="btn w-100"
+                  style={{
+                    background: COLORS.primary,
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    padding: '12px',
+                    opacity: !kycFile ? 0.6 : 1,
+                    cursor: !kycFile ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <i className="fas fa-upload me-2"></i>
+                  Submit ID Document
+                </button>
+              </>
+            )}
+
+            {kycStatus === 'pending' && (
+              <div
+                style={{
+                  background: COLORS.warning + '20',
+                  border: `1px solid ${COLORS.warning}`,
+                  borderRadius: '12px',
+                  padding: '16px'
+                }}
+              >
+                <p className="small mb-0" style={{ color: COLORS.warning }}>
+                  <i className="fas fa-hourglass me-2"></i>
+                  Your KYC document is under review. This typically takes 1-2 business days.
+                </p>
+              </div>
+            )}
+
+            {kycStatus === 'verified' && (
+              <div
+                style={{
+                  background: COLORS.success + '20',
+                  border: `1px solid ${COLORS.success}`,
+                  borderRadius: '12px',
+                  padding: '16px'
+                }}
+              >
+                <p className="small mb-0" style={{ color: COLORS.success }}>
+                  <i className="fas fa-check me-2"></i>
+                  Your KYC verification is complete! You have full access to all features.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      {profileMsg && <div className="alert alert-info mt-3">{profileMsg}</div>}
-    </div>
+
+      {/* Quick Actions */}
+      <div className="row g-4">
+        <div className="col-md-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+            onClick={() => navigate('/me')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              if (!isDarkMode) e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              if (!isDarkMode) e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+            }}
+          >
+            <h6 className="fw-bold mb-2" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-cog me-2" style={{ color: COLORS.primary }}></i>
+              Settings
+            </h6>
+            <p className="small mb-0" style={{ color: COLORS.lightText }}>
+              Manage your account settings and preferences
+            </p>
+          </div>
+        </div>
+        <div className="col-md-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+            onClick={() => navigate('/support')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              if (!isDarkMode) e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              if (!isDarkMode) e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+            }}
+          >
+            <h6 className="fw-bold mb-2" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-headset me-2" style={{ color: COLORS.primary }}></i>
+              Support
+            </h6>
+            <p className="small mb-0" style={{ color: COLORS.lightText }}>
+              Contact our support team for help
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Image Upload Modal */}
+      {showImageModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowImageModal(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '28px',
+              maxWidth: '400px',
+              width: '90%'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              Update Profile Image
+            </h5>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="form-control"
+              style={{
+                background: isDarkMode ? '#374151' : COLORS.light,
+                border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                borderRadius: '12px',
+                color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                padding: '12px 16px'
+              }}
+            />
+            <div className="d-flex gap-2 mt-4">
+              <button
+                className="btn w-100"
+                onClick={() => setShowImageModal(false)}
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '10px'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </PageLayout>
   );
 };
-}
+
 export default Profile;

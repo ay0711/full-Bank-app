@@ -1,113 +1,456 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import PageLayout, { COLORS } from '../components/PageLayout';
+import { useAppContext } from '../context/AppContext';
+import ConfirmModal from '../components/ConfirmModal';
+import { formatCurrency } from '../utils/currencyConverter';
 import axios from 'axios';
-import BottomNav from '../components/BottomNav';
 
 const Cards = () => {
-  // Handle card request (virtual/physical)
-  const handleRequestCard = async () => {
-    setMessage('');
-    try {
-      const token = localStorage.getItem('token');
-      // This should call your backend endpoint for requesting a card
-  await axios.post('https://full-bank-app.onrender.com/api/opay/cards/request', { type: cardType }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage(`Requested a ${cardType} card successfully!`);
-      setShowRequest(false);
-      // Optionally refresh cards list
-    } catch {
-      setMessage('Failed to request card (backend route missing or not implemented)');
-    }
-  };
-  const [cards, setCards] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
+  const [cards, setCards] = useState([
+    { id: 1, type: 'Virtual', last4: '1234', balance: 500000, status: 'Active', issuer: 'Mastercard', expiry: '12/26', color: '#4F46E5' },
+    { id: 2, type: 'Physical', last4: '5678', balance: 0, status: 'Active', issuer: 'Visa', expiry: '08/25', color: '#1434CB' }
+  ]);
 
-  // Card request modal state
-  const [showRequest, setShowRequest] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const [cardType, setCardType] = useState('virtual');
+  const [message, setMessage] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [cardToDelete, setCardToDelete] = useState(null);
+  const { isDarkMode, user, settings } = useAppContext();
+  
+  // Get currency from settings
+  const currency = settings?.currency || 'NGN';
 
   useEffect(() => {
-    const fetchCards = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        // Fallback for missing backend route
-  const res = await axios.get('https://full-bank-app.onrender.com/api/opay/cards', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setCards(res.data.cards || []);
-      } catch (err) {
-        setMessage('Failed to fetch cards (backend route missing or not implemented)');
-        setCards([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchCards();
   }, []);
 
-  const handleBlock = async (type, status) => {
-    setMessage('');
+  const fetchCards = async () => {
     try {
       const token = localStorage.getItem('token');
-  await axios.post('https://full-bank-app.onrender.com/api/opay/cards/block', { type, status }, {
+      const response = await axios.get('https://full-bank-app.onrender.com/api/banking/cards', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setCards(cards.map(card => card.type === type ? { ...card, status } : card));
-      setMessage(`Card ${status === 'blocked' ? 'blocked' : 'unblocked'} successfully`);
-    } catch {
-      setMessage('Failed to update card status');
+      if (response.data.cards && response.data.cards.length > 0) {
+        setCards(response.data.cards);
+      }
+    } catch (error) {
+      console.error('Error fetching cards:', error);
     }
   };
 
+  const handleRequestCard = async () => {
+    if (cardType) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.post('https://full-bank-app.onrender.com/api/banking/cards/request', { type: cardType }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setMessage(`${cardType === 'virtual' ? 'Virtual' : 'Physical'} card request submitted successfully!`);
+        setShowRequestModal(false);
+        setTimeout(() => setMessage(''), 3000);
+        fetchCards();
+      } catch (error) {
+        setMessage('Error requesting card. Please try again.');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    }
+  };
+
+  const handleBlockCard = async (cardId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`https://full-bank-app.onrender.com/api/banking/cards/${cardId}/block`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCards(cards.map(card =>
+        card.id === cardId ? { ...card, status: 'Blocked' } : card
+      ));
+      setMessage('Card blocked successfully');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('Error blocking card. Please try again.');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
+  const handleUnblockCard = async (cardId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`https://full-bank-app.onrender.com/api/banking/cards/${cardId}/unblock`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCards(cards.map(card =>
+        card.id === cardId ? { ...card, status: 'Active' } : card
+      ));
+      setMessage('Card unblocked successfully');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('Error unblocking card. Please try again.');
+      setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
+  const handleDeleteCard = async (cardId) => {
+    setCardToDelete(cardId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (cardToDelete) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`https://full-bank-app.onrender.com/api/banking/cards/${cardToDelete}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setCards(cards.filter(card => card.id !== cardToDelete));
+        setCardToDelete(null);
+        setMessage('Card deleted successfully');
+        setTimeout(() => setMessage(''), 3000);
+      } catch (error) {
+        setMessage('Error deleting card. Please try again.');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    }
+  };
+
+  const getUserFullName = () => {
+    if (user) {
+      return `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Card User';
+    }
+    return 'Card User';
+  };
+
+  const getCardKey = (card, index) => {
+    return card._id || card.id || card.last4 || `card-${index}`;
+  };
+
+  const getCardActionId = (card) => {
+    return card._id || card.id || '';
+  };
+
   return (
-    <div className="min-vh-100 bg-light">
-      <div className="container py-4">
-        <h3 className="mb-4 text-success">My Cards</h3>
-        {message && <div className="alert alert-info">{message}</div>}
-        {/* Card Request UI */}
-        <div className="mb-4">
-          <button className="btn btn-primary" onClick={() => setShowRequest(true)}>Request New Card</button>
-          {showRequest && (
-            <div className="card p-3 mt-2">
-              <label>Choose Card Type:</label>
-              <select className="form-select my-2" value={cardType} onChange={e => setCardType(e.target.value)}>
-                <option value="virtual">Virtual Card</option>
-                <option value="physical">Physical Card</option>
-              </select>
-              <button className="btn btn-success w-100" onClick={handleRequestCard}>Submit Request</button>
-              <button className="btn btn-link w-100 mt-2" onClick={() => setShowRequest(false)}>Cancel</button>
-            </div>
-          )}
+    <PageLayout pageTitle="My Cards" pageSubtitle="Manage your debit and virtual cards">
+      {/* Success Message */}
+      {message && (
+        <div
+          style={{
+            background: COLORS.success,
+            color: 'white',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '24px'
+          }}
+        >
+          {message}
         </div>
-        {loading ? (
-          <div className="text-center py-5">
-            <span className="spinner-border text-success" />
+      )}
+
+      {/* Request Card Button */}
+      <div className="mb-5">
+        <button
+          onClick={() => setShowRequestModal(true)}
+          className="btn fw-semibold"
+          style={{
+            background: COLORS.primary,
+            color: 'white',
+            borderRadius: '12px',
+            border: 'none',
+            padding: '12px 24px'
+          }}
+        >
+          <i className="fas fa-plus me-2"></i>Request New Card
+        </button>
+      </div>
+
+      {/* Request Card Modal */}
+      {showRequestModal && (
+        <div
+          style={{
+            background: isDarkMode ? '#1F2937' : COLORS.card,
+            borderRadius: '16px',
+            padding: '28px',
+            marginBottom: '32px',
+            boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+            border: isDarkMode ? '1px solid #374151' : 'none'
+          }}
+        >
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              Request a Card
+            </h5>
+            <button
+              onClick={() => setShowRequestModal(false)}
+              style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}
+            >
+              ×
+            </button>
           </div>
-        ) : (
-          cards.length === 0 ? (
-            <div className="text-center py-5 text-muted">No cards found</div>
-          ) : (
-            cards.map(card => (
-              <div className="card shadow-sm mb-3" style={{ borderRadius: '1.5rem' }} key={card.type}>
-                <div className="card-body text-center">
-                  <h5>{card.type === 'virtual' ? 'Virtual Card' : 'Physical Card'}</h5>
-                  <p>**** **** **** {card.last4}</p>
-                  <span className={`badge ${card.status === 'active' ? 'bg-success' : 'bg-danger'} mb-2`}>
-                    {card.status === 'active' ? 'Active' : 'Blocked'}
-                  </span>
-                  <div className="d-flex justify-content-center gap-2">
-                    <button className="btn btn-outline-success" disabled={card.status === 'active'} onClick={() => handleBlock(card.type, 'active')}>Unblock</button>
-                    <button className="btn btn-outline-danger" disabled={card.status === 'blocked'} onClick={() => handleBlock(card.type, 'blocked')}>Block</button>
+
+          <div className="mb-4">
+            <label className="small fw-semibold mb-3 d-block" style={{ color: COLORS.lightText }}>
+              Select Card Type
+            </label>
+            <div className="d-flex gap-3">
+              <label style={{ cursor: 'pointer', flex: 1 }}>
+                <div
+                  style={{
+                    background: cardType === 'virtual' ? COLORS.primary : (isDarkMode ? '#374151' : COLORS.light),
+                    border: cardType === 'virtual' ? `2px solid ${COLORS.primary}` : 'none',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>💳</div>
+                  <p
+                    className="small fw-semibold mb-0"
+                    style={{ color: cardType === 'virtual' ? 'white' : (isDarkMode ? '#D1D5DB' : COLORS.darkText) }}
+                  >
+                    Virtual Card
+                  </p>
+                </div>
+                <input type="radio" name="cardType" value="virtual" checked={cardType === 'virtual'} onChange={(e) => setCardType(e.target.value)} style={{ display: 'none' }} />
+              </label>
+
+              <label style={{ cursor: 'pointer', flex: 1 }}>
+                <div
+                  style={{
+                    background: cardType === 'physical' ? COLORS.primary : (isDarkMode ? '#374151' : COLORS.light),
+                    border: cardType === 'physical' ? `2px solid ${COLORS.primary}` : 'none',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    textAlign: 'center',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🏦</div>
+                  <p
+                    className="small fw-semibold mb-0"
+                    style={{ color: cardType === 'physical' ? 'white' : (isDarkMode ? '#D1D5DB' : COLORS.darkText) }}
+                  >
+                    Physical Card
+                  </p>
+                </div>
+                <input type="radio" name="cardType" value="physical" checked={cardType === 'physical'} onChange={(e) => setCardType(e.target.value)} style={{ display: 'none' }} />
+              </label>
+            </div>
+          </div>
+
+          <div className="d-flex gap-2">
+            <button
+              onClick={handleRequestCard}
+              className="btn flex-grow-1 fw-semibold"
+              style={{
+                background: COLORS.success,
+                color: 'white',
+                borderRadius: '12px',
+                border: 'none'
+              }}
+            >
+              Request Card
+            </button>
+            <button
+              onClick={() => setShowRequestModal(false)}
+              className="btn flex-grow-1 fw-semibold"
+              style={{
+                background: isDarkMode ? '#374151' : COLORS.light,
+                color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                borderRadius: '12px',
+                border: 'none'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cards Grid */}
+      {cards.length === 0 ? (
+        <div
+          style={{
+            background: isDarkMode ? '#1F2937' : COLORS.card,
+            borderRadius: '16px',
+            padding: '60px 20px',
+            textAlign: 'center',
+            border: isDarkMode ? '1px solid #374151' : 'none'
+          }}
+        >
+          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>💳</div>
+          <p style={{ color: COLORS.lightText }}>You haven't requested any cards yet</p>
+          <button
+            onClick={() => setShowRequestModal(true)}
+            className="btn fw-semibold mt-3"
+            style={{
+              background: COLORS.primary,
+              color: 'white',
+              borderRadius: '12px',
+              border: 'none',
+              padding: '10px 20px'
+            }}
+          >
+            Request Your First Card
+          </button>
+        </div>
+      ) : (
+        <div className="row g-4">
+          {cards.map((card, index) => {
+            const cardKey = getCardKey(card, index);
+            const cardActionId = getCardActionId(card);
+            return (
+            <div key={cardKey} className="col-12 col-md-6 col-lg-6">
+              {/* Card Display */}
+              <div
+                style={{
+                  background: card.color,
+                  backgroundImage: `linear-gradient(135deg, ${card.color} 0%, rgba(79, 70, 229, 0.8) 100%)`,
+                  borderRadius: '20px',
+                  padding: 'clamp(20px, 4vw, 32px)',
+                  color: 'white',
+                  marginBottom: '16px',
+                  minHeight: '180px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
+                }}
+              >
+                <div>
+                  <div className="d-flex justify-content-between align-items-start mb-3 mb-md-4">
+                    <div>
+                      <p className="small mb-2" style={{ opacity: 0.8, fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>Card Type</p>
+                      <h6 className="fw-bold mb-0" style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.1rem)' }}>{card.type} Card</h6>
+                    </div>
+                    <div style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)' }}>{card.issuer === 'Mastercard' ? '💳' : '🏪'}</div>
+                  </div>
+                  <p className="mb-2" style={{ opacity: 0.8, fontSize: 'clamp(0.8rem, 2vw, 0.9rem)' }}>
+                    **** **** **** {card.last4}
+                  </p>
+                </div>
+
+                <div className="d-flex justify-content-between align-items-end flex-wrap gap-2">
+                  <div>
+                    <p className="small mb-1" style={{ opacity: 0.8, fontSize: 'clamp(0.7rem, 1.8vw, 0.8rem)' }}>Card Holder</p>
+                    <p className="fw-bold mb-0" style={{ fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>{getUserFullName()}</p>
+                  </div>
+                  <div>
+                    <p className="small mb-1" style={{ opacity: 0.8, fontSize: 'clamp(0.7rem, 1.8vw, 0.8rem)' }}>Expires</p>
+                    <p className="fw-bold mb-0" style={{ fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>{card.expiry}</p>
                   </div>
                 </div>
               </div>
-            ))
-          )
-        )}
-      </div>
-      <BottomNav active="cards" />
-    </div>
+
+              {/* Card Details */}
+              <div
+                style={{
+                  background: isDarkMode ? '#1F2937' : COLORS.card,
+                  borderRadius: '16px',
+                  padding: '24px',
+                  border: isDarkMode ? '1px solid #374151' : 'none',
+                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)'
+                }}
+              >
+                <div className="row g-2 mb-4">
+                  <div className="col-6">
+                    <p className="small mb-1" style={{ color: COLORS.lightText }}>Balance</p>
+                    <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                      {formatCurrency(card.balance, currency)}
+                    </p>
+                  </div>
+                  <div className="col-6">
+                    <p className="small mb-1" style={{ color: COLORS.lightText }}>Status</p>
+                    <span
+                      style={{
+                        background: card.status === 'Active' ? COLORS.success : COLORS.danger,
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {card.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="d-flex gap-2 flex-column">
+                  <div className="d-flex gap-2">
+                    {card.status === 'Active' && (
+                      <button
+                        onClick={() => handleBlockCard(cardActionId)}
+                        className="btn flex-grow-1 btn-sm"
+                        style={{
+                          background: COLORS.danger,
+                          color: 'white',
+                          borderRadius: '12px',
+                          border: 'none'
+                        }}
+                      >
+                        <i className="fas fa-lock me-1"></i>Block
+                      </button>
+                    )}
+                    {card.status === 'Blocked' && (
+                      <button
+                        onClick={() => handleUnblockCard(cardActionId)}
+                        className="btn flex-grow-1 btn-sm"
+                        style={{
+                          background: COLORS.success,
+                          color: 'white',
+                          borderRadius: '12px',
+                          border: 'none'
+                        }}
+                      >
+                        <i className="fas fa-unlock me-1"></i>Unblock
+                      </button>
+                    )}
+                    <button
+                      className="btn flex-grow-1 btn-sm"
+                      style={{
+                        background: isDarkMode ? '#374151' : COLORS.light,
+                        color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                        borderRadius: '12px',
+                        border: 'none'
+                      }}
+                    >
+                      <i className="fas fa-info-circle me-1"></i>Details
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteCard(cardActionId)}
+                    className="btn btn-sm w-100"
+                    style={{
+                      background: isDarkMode ? '#7F1D1D' : '#FEE2E2',
+                      color: isDarkMode ? '#FCA5A5' : COLORS.danger,
+                      borderRadius: '12px',
+                      border: 'none',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    <i className="fas fa-trash me-1"></i>Delete Card
+                  </button>
+                </div>
+              </div>
+            </div>
+            );
+          })}
+        </div>
+      )}
+      {/* Delete Card Confirmation Modal */}
+      <ConfirmModal
+        show={showDeleteConfirm}
+        onClose={() => { setShowDeleteConfirm(false); setCardToDelete(null); }}
+        onConfirm={confirmDelete}
+        title="Delete Card"
+        message="Are you sure you want to delete this card? This action cannot be undone."
+        confirmText="Delete"
+        confirmColor="#EF4444"
+        isDarkMode={isDarkMode}
+      />    </PageLayout>
   );
 };
 

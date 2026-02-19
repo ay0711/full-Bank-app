@@ -392,6 +392,55 @@ router.get('/loans', authenticateToken, async (req, res) => {
     }
 });
 
+// Apply for a loan
+router.post('/loans/apply', authenticateToken, async (req, res) => {
+    try {
+        const { loanId, amount, duration, reason } = req.body;
+        if (!loanId || !amount || !duration) {
+            return res.status(400).json({ message: 'Loan, amount, and duration are required' });
+        }
+
+        const loans = [
+            { id: 1, name: 'Personal Loan', minAmount: 50000, maxAmount: 500000, interestRate: 12, duration: 24, status: 'available' },
+            { id: 2, name: 'Business Loan', minAmount: 100000, maxAmount: 5000000, interestRate: 10, duration: 36, status: 'available' },
+            { id: 3, name: 'Auto Loan', minAmount: 200000, maxAmount: 3000000, interestRate: 8, duration: 60, status: 'available' },
+            { id: 4, name: 'Education Loan', minAmount: 50000, maxAmount: 2000000, interestRate: 9, duration: 48, status: 'available' }
+        ];
+
+        const selectedLoan = loans.find(l => l.id === Number(loanId));
+        if (!selectedLoan) {
+            return res.status(404).json({ message: 'Loan not found' });
+        }
+
+        if (amount < selectedLoan.minAmount || amount > selectedLoan.maxAmount) {
+            return res.status(400).json({ message: 'Amount is خارج allowed range' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!user.loanApplications) user.loanApplications = [];
+
+        const application = {
+            loanId: selectedLoan.id,
+            loanName: selectedLoan.name,
+            amount: Number(amount),
+            duration: Number(duration),
+            interestRate: selectedLoan.interestRate,
+            reason: reason || ''
+        };
+
+        user.loanApplications.push(application);
+        await user.save();
+
+        res.status(201).json({ message: 'Loan application submitted', application });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 // Get user cards
 router.get('/cards', authenticateToken, async (req, res) => {
     try {
@@ -467,13 +516,19 @@ router.patch('/cards/:id/unblock', authenticateToken, async (req, res) => {
 router.delete('/cards/:id', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
-        const card = user.cards.id(req.params.id);
-        
-        if (!card) return res.status(404).json({ message: 'Card not found' });
-        
-        card.remove();
+        if (!user || !user.cards) {
+            return res.status(404).json({ message: 'Card not found' });
+        }
+
+        const beforeCount = user.cards.length;
+        user.cards = user.cards.filter(card => card._id?.toString() !== req.params.id);
+
+        if (user.cards.length === beforeCount) {
+            return res.status(404).json({ message: 'Card not found' });
+        }
+
         await user.save();
-        
+
         res.json({ message: 'Card deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Internal server error' });

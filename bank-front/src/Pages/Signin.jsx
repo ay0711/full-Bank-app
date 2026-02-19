@@ -229,7 +229,7 @@ const Signin = () => {
                             Remember me
                           </label>
                         </div>
-                        <Link to="#" className="forgot-password-link">Forgot Password?</Link>
+                        <Link to="/forgot-password" className="forgot-password-link">Forgot Password?</Link>
                       </div>
 
                       {/* Submit button */}

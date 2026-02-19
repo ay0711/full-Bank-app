@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
   USER: (accountNumber) => `${API_URL}/api/auth/user/${accountNumber}`,
   PROFILE_IMAGE: `${API_URL}/api/auth/profile-image`,
   HEALTH: `${API_URL}/api/auth/health`,
+  UPGRADE_ACCOUNT: `${API_URL}/api/auth/upgrade-account`,
   
   // Banking endpoints
   DASHBOARD: `${API_URL}/api/banking/dashboard`,
@@ -17,6 +18,8 @@ export const API_ENDPOINTS = {
   RECIPIENTS: `${API_URL}/api/banking/recipients`,
   FUND: `${API_URL}/api/banking/fund`,
   WITHDRAW: `${API_URL}/api/banking/withdraw`,
+  LOANS: `${API_URL}/api/banking/loans`,
+  LOAN_APPLY: `${API_URL}/api/banking/loans/apply`,
   
   // Bills endpoints
   AIRTIME: `${API_URL}/api/bills/airtime`,

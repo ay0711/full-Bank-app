@@ -5,6 +5,7 @@ import { AppProvider } from './context/AppContext';
 import BackendLoader from './components/BackendLoader';
 import Signup from './Pages/Signup';
 import Signin from './Pages/Signin';
+import ForgotPassword from './Pages/ForgotPassword';
 import Dashboard from './Pages/DashboardNew';
 import Transfer from './Pages/Transfer';
 import Transactions from './Pages/Transactions';
@@ -20,7 +21,9 @@ import Cards from './Pages/Cards';
 import AirtimeData from './Pages/AirtimeData';
 import Notification from './Pages/Notification';
 import Support from './Pages/Support';
+import Accounts from './Pages/Accounts';
 import AnimatedSplash from './components/AnimatedSplash';
+import AIAssistant from './components/AIAssistant';
 import SloganSplash from './components/SloganSplash';
 import './App.css';
 
@@ -79,6 +82,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Signup />} />
         <Route path="/signin" element={<Signin />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/transfer" element={<Transfer />} />
         <Route path="/transactions" element={<Transactions />} />
@@ -91,10 +95,12 @@ function App() {
         <Route path="/me" element={<Me />} />
         <Route path="/finances" element={<Finances />} />
         <Route path="/cards" element={<Cards />} />
+        <Route path="/accounts" element={<Accounts />} />
         <Route path="/airtime-data" element={<AirtimeData />} />
         <Route path="/notification" element={<Notification />} />
         <Route path="/support" element={<Support />} />
       </Routes>
+      <AIAssistant />
     </div>
   );
 }

@@ -1,0 +1,376 @@
+/* Dashboard Enhanced Styles */
+
+:root {
+  --primary: #4F46E5;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --secondary: #6B7280;
+  --light: #F3F4F6;
+  --lighter: #E5E7EB;
+  --dark-text: #1F2937;
+  --light-text: #6B7280;
+  --card: #FFFFFF;
+  --border-radius: 16px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 8px 16px rgba(0, 0, 0, 0.12);
+  --transition: all 0.3s ease;
+}
+
+/* Dark mode */
+body.dark-mode {
+  --card: #1F2937;
+  --dark-text: #F3F4F6;
+  --light-text: #D1D5DB;
+  --bg: #111827;
+  --border-color: #374151;
+}
+
+/* Smooth transitions */
+* {
+  transition: var(--transition);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--lighter);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
+}
+
+/* Button Hover Effects */
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Card Hover Effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Input Focus Effects */
+.form-control:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+  outline: none;
+}
+
+/* Chart Container */
+.recharts-wrapper {
+  overflow: visible !important;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.5px;
+}
+
+/* Responsive Grid Spacing */
+@media (max-width: 992px) {
+  main {
+    padding: 1rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  main {
+    padding: 0.75rem !important;
+  }
+
+  .row {
+    margin: -0.375rem !important;
+  }
+
+  .row > [class*="col-"] {
+    padding: 0.375rem !important;
+  }
+
+  h2 {
+    font-size: 1.5rem !important;
+  }
+
+  h5 {
+    font-size: 1rem !important;
+  }
+
+  /* Better header alignment on mobile */
+  .mb-5 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  /* Improve button spacing */
+  .d-flex.gap-3 {
+    gap: 0.5rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  main {
+    padding: 0.5rem !important;
+  }
+
+  /* Stat Cards Stack */
+  .col-md-6,
+  .col-lg-4,
+  .col-lg-8,
+  .col-lg-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Hide certain elements on mobile */
+  .d-lg-none {
+    display: block !important;
+  }
+
+  .d-none.d-lg-flex {
+    display: none !important;
+  }
+
+  /* Chart container padding */
+  [style*="padding: 28px"] {
+    padding: 20px !important;
+  }
+
+  /* Header adjustments */
+  .d-flex.justify-content-between {
+    flex-direction: column !important;
+  }
+
+  .input-group {
+    max-width: 100% !important;
+    margin-bottom: 1rem;
+  }
+
+  /* Reduce avatar size on mobile */
+  div[style*="width: 44px"] {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* Quick transfer circles on mobile */
+  div[style*="aspectRatio"] {
+    min-height: 80px !important;
+  }
+
+  /* Transaction list on mobile */
+  .mb-4 > div {
+    margin-bottom: 0.5rem !important;
+  }
+}
+
+/* Animation Classes */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.slide-in-up {
+  animation: slideInUp 0.5s ease-out;
+}
+
+/* Smooth color transitions */
+.text-primary {
+  transition: color var(--transition);
+}
+
+/* Better link styling */
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: color var(--transition);
+}
+
+a:hover {
+  color: var(--primary);
+}
+
+/* Loading spinner */
+.spinner-border {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-width: 3px;
+}
+
+/* Mobile optimizations */
+@supports (padding: max(0px)) {
+  main {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Better focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Smooth page transitions */
+main {
+  animation: slideInUp 0.4s ease-out;
+}
+
+/* Chart responsiveness */
+@media (max-width: 992px) {
+  .col-lg-8 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .col-lg-4 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .col-lg-6 {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, #3730A3 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+}
+
+/* Better separators */
+.border-bottom {
+  border-bottom-color: var(--lighter) !important;
+}
+
+/* Smooth list scrolling */
+div[style*="overflowY"] {
+  scroll-behavior: smooth;
+}
+
+/* Avatar badges */
+div[style*="borderRadius: 50%"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Status indicators */
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Enhanced form inputs */
+input.form-control {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+input.form-control::placeholder {
+  opacity: 0.6;
+}
+
+/* Code improvements for touch devices */
+@media (hover: none) {
+  button,
+  a {
+    -webkit-tap-highlight-color: rgba(79, 70, 229, 0.1);
+  }
+}
+
+/* Prevent zoom on input focus (iOS) */
+input.form-control {
+  font-size: max(16px, 1rem);
+}
+
+/* Better responsive text sizes */
+@media (max-width: 576px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h5 {
+    font-size: 0.95rem;
+  }
+
+  small,
+  .small {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Improved color contrast */
+.text-muted {
+  color: var(--light-text) !important;
+}
+
+/* Badge styling */
+.badge {
+  padding: 0.35em 0.65em;
+  font-weight: 600;
+  font-size: 0.75rem;
+}

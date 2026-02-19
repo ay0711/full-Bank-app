@@ -71,6 +71,25 @@ body.dark-mode .btn-outline-dark:hover {
   min-height: 100vh;
 }
 
+/* Fixed sidebar layout helpers */
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-main {
+  margin-left: 280px;
+}
+
+@media (max-width: 991.98px) {
+  .app-main {
+    margin-left: 0;
+  }
+}
+
 /* Card Shadows */
 .card {
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);

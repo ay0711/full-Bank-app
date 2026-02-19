@@ -110,6 +110,16 @@ const userSchema = new mongoose.Schema({
         color: { type: String, default: '#4F46E5' },
         createdAt: { type: Date, default: Date.now }
     }],
+    loanApplications: [{
+        loanId: { type: Number, required: true },
+        loanName: { type: String, required: true },
+        amount: { type: Number, required: true },
+        duration: { type: Number, required: true },
+        interestRate: { type: Number, required: true },
+        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        reason: { type: String, default: '' },
+        createdAt: { type: Date, default: Date.now }
+    }],
         notifications: [{
             message: String,
             read: { type: Boolean, default: false },

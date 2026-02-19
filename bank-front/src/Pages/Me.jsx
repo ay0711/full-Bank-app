@@ -1,884 +1,1767 @@
-import React, { useState } from 'react';
-import BottomNav from '../components/BottomNav';
-// Profile content will be inlined below
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import PageLayout, { COLORS } from '../components/PageLayout';
 import { useAppContext } from '../context/AppContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import ConfirmModal from '../components/ConfirmModal';
+import axios from 'axios';
+import { API_ENDPOINTS } from '../utils/api';
 
 const Me = () => {
-  // Advanced settings state (fix ReferenceError)
-  const [showPrivacy, setShowPrivacy] = useState(false);
-  const [privacy, setPrivacy] = useState({ hideBalance: false, hideAccountNumber: false });
-  const [privacyMsg, setPrivacyMsg] = useState('');
-  const [showSessions, setShowSessions] = useState(false);
-  const [sessions, setSessions] = useState([]);
-  const [sessionsMsg, setSessionsMsg] = useState('');
-  const [showDownload, setShowDownload] = useState(false);
-  const [downloadMsg, setDownloadMsg] = useState('');
-  const [showDelete, setShowDelete] = useState(false);
-  const [deleteMsg, setDeleteMsg] = useState('');
-  const [showTheme, setShowTheme] = useState(false);
-  const [theme, setTheme] = useState({ accent: '#00C853', fontSize: 16 });
-  const [themeMsg, setThemeMsg] = useState('');
-  const [showSupport, setShowSupport] = useState(false);
-  const [supportMsg, setSupportMsg] = useState('');
-  const [showDevices, setShowDevices] = useState(false);
-  const [devices, setDevices] = useState([]);
-  const [devicesMsg, setDevicesMsg] = useState('');
-  const [showLimits, setShowLimits] = useState(false);
-  const [limits, setLimits] = useState({ daily: 0, weekly: 0 });
-  const [limitsMsg, setLimitsMsg] = useState('');
-  const [showAccessibility, setShowAccessibility] = useState(false);
-  const [accessibility, setAccessibility] = useState({ highContrast: false, textSize: 16 });
-  const [accessibilityMsg, setAccessibilityMsg] = useState('');
-  const [fingerprintEnabled, setFingerprintEnabled] = useState(false);
-  const [kycStatus, setKycStatus] = useState('unverified');
-  const [securityMessage, setSecurityMessage] = useState('');
-  const { user, logout, setUser } = useAppContext();
-  // Modal state
+  const navigate = useNavigate();
+  const { user, setUser, isDarkMode, logout, settings, updateSettings } = useAppContext();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [editProfileData, setEditProfileData] = useState({ firstName: '', lastName: '', email: '' });
-  const [editProfileMsg, setEditProfileMsg] = useState('');
-  const [changePasswordData, setChangePasswordData] = useState({ oldPassword: '', newPassword: '' });
-  const [changePasswordMsg, setChangePasswordMsg] = useState('');
-  // Notification Preferences
-  const [showNotifPrefs, setShowNotifPrefs] = useState(false);
-  const [notifPrefs, setNotifPrefs] = useState({ email: true, sms: false, push: true });
-  const [notifMsg, setNotifMsg] = useState('');
-  // 2FA
-  const [show2FA, setShow2FA] = useState(false);
-  const [twoFAEnabled, setTwoFAEnabled] = useState(user && user.twoFA && typeof user.twoFA.enabled === 'boolean' ? user.twoFA.enabled : false);
-  const [twoFASecret, setTwoFASecret] = useState('');
-  const [twoFACode, setTwoFACode] = useState('');
-  const [twoFAMsg, setTwoFAMsg] = useState('');
-  // App Settings
-  const [showAppSettings, setShowAppSettings] = useState(false);
-  const [appSettings, setAppSettings] = useState({ darkMode: false, language: 'en', quickLogin: false });
-  const [appSettingsMsg, setAppSettingsMsg] = useState('');
-  // KYC
-  const [showKycModal, setShowKycModal] = useState(false);
-  const [kycFile, setKycFile] = useState(null);
-  const [kycMsg, setKycMsg] = useState('');
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [profileImage, setProfileImage] = useState(user?.profileImage || '');
+  const [uploading, setUploading] = useState(false);
+  const [profileData, setProfileData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || ''
+  });
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+  const [showUpgradeConfirm, setShowUpgradeConfirm] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [pendingUpgrade, setPendingUpgrade] = useState(null);
+  
+  // Settings state from context
+  const [language, setLanguage] = useState(settings.language);
+  const [currency, setCurrency] = useState(settings.currency);
+  const [displayDensity, setDisplayDensity] = useState(settings.displayDensity);
+  const [themePreference, setThemePreference] = useState(settings.themePreference);
+  const [sessionTimeout, setSessionTimeout] = useState(settings.sessionTimeout);
+  const [hideBalance, setHideBalance] = useState(false);
+  const [hideAccountNumber, setHideAccountNumber] = useState(false);
+  const [showLoginActivity, setShowLoginActivity] = useState(false);
+  
+  // Sync settings changes to context
+  useEffect(() => {
+    const newSettings = {
+      ...settings,
+      language,
+      currency,
+      displayDensity,
+      themePreference,
+      sessionTimeout
+    };
+    if (JSON.stringify(newSettings) !== JSON.stringify(settings)) {
+      updateSettings(newSettings);
+    }
+  }, [language, currency, displayDensity, themePreference, sessionTimeout]);
 
-  const handleFingerprintToggle = async () => {
-    setFingerprintEnabled(!fingerprintEnabled);
-    setSecurityMessage(fingerprintEnabled ? 'Fingerprint disabled' : 'Fingerprint enabled');
-    // Call backend to enable/disable fingerprint (stub)
+  useEffect(() => {
+    setProfileImage(user?.profileImage || '');
+  }, [user?.profileImage]);
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setMessage('');
+
+    if (!profileData.firstName || !profileData.lastName) {
+      setMessage('Please fill in all fields');
+      setMessageType('error');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        'https://full-bank-app.onrender.com/api/auth/profile',
+        profileData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.user) {
+        setUser(response.data.user);
+        setMessage('Profile updated successfully!');
+        setMessageType('success');
+        setShowEditProfile(false);
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (error) {
+      setMessage('Error updating profile. Please try again.');
+      setMessageType('error');
+      setTimeout(() => setMessage(''), 3000);
+    }
   };
 
-  const handleKycUpload = async () => {
-    setKycStatus('pending');
-    setSecurityMessage('KYC submitted, pending verification');
-    // Call backend to upload KYC (stub)
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setMessage('');
+
+    if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setMessage('Please fill in all fields');
+      setMessageType('error');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setMessage('New passwords do not match');
+      setMessageType('error');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        'https://full-bank-app.onrender.com/api/auth/change-password',
+        {
+          oldPassword: passwordData.oldPassword,
+          newPassword: passwordData.newPassword
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setMessage('Password changed successfully!');
+      setMessageType('success');
+      setShowChangePassword(false);
+      setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage('Error changing password. Please try again.');
+      setMessageType('error');
+      setTimeout(() => setMessage(''), 3000);
+    }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/signin');
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setMessage('Please select a valid image file');
+      setMessageType('error');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Image size must be less than 5MB');
+      setMessageType('error');
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const base64 = reader.result;
+        const token = localStorage.getItem('token');
+        
+        // Send image to backend for saving
+        const response = await axios.put(
+          'https://full-bank-app.onrender.com/api/auth/profile-image',
+          { image: base64 },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        // Update user context with new image from database
+        if (response.data.user) {
+          setUser(response.data.user);
+          setProfileImage(response.data.user.profileImage);
+          setMessage('Profile image updated successfully!');
+          setMessageType('success');
+          setShowImageModal(false);
+        }
+        setTimeout(() => setMessage(''), 3000);
+      } catch (error) {
+        setMessage('Failed to upload image. Please try again.');
+        setMessageType('error');
+        setTimeout(() => setMessage(''), 3000);
+      } finally {
+        setUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
-    <div className="min-vh-100 bg-light">
-      <div className="container py-4">
-        <div className="d-flex justify-content-end mb-3">
-          <button className="btn btn-outline-danger" onClick={handleLogout}>
-            <i className="fas fa-sign-out-alt me-2"></i>Log Out
-          </button>
+    <PageLayout pageTitle="Settings" pageSubtitle="Manage your profile and preferences">
+      {/* Success/Error Message */}
+      {message && (
+        <div
+          style={{
+            background: messageType === 'success' ? COLORS.success : COLORS.danger,
+            color: 'white',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '24px'
+          }}
+        >
+          {message}
         </div>
-        <h3 className="mb-4 text-success">Me</h3>
-  {/* Modern Profile Card */}
-        {user ? (
-          <div className="card shadow-lg border-0 mb-4 bg-white rounded-5 p-4 position-relative modern-profile-card">
-            <div className="card-body text-center p-0">
-              {/* Profile Image Upload */}
-              <div className="mb-3 d-flex flex-column align-items-center justify-content-center position-relative">
-                <img
-                  src={user.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent((user.firstName||'') + ' ' + (user.lastName||''))}&background=random&size=128`}
-                  alt="Profile"
-                  className="rounded-circle border border-3 border-success shadow"
-                  style={{ width: 110, height: 110, objectFit: 'cover', background: '#f8f9fa' }}
-                />
-                <label htmlFor="profile-upload" className="btn btn-sm btn-success rounded-circle position-absolute" style={{ right: 'calc(50% - 55px)', bottom: 0, zIndex: 2, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px #00C85333' }}>
-                  <i className="fas fa-camera text-white"></i>
-                  <input
-                    id="profile-upload"
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new window.FileReader();
-                        reader.onloadend = async () => {
-                          try {
-                            const token = localStorage.getItem('token');
-                            const res = await fetch('https://full-bank-app.onrender.com/api/auth/profile-image', {
-                              method: 'PUT',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                              },
-                              body: JSON.stringify({ image: reader.result })
-                            });
-                            const data = await res.json();
-                            if (data.profileImage) {
-                              user.profileImage = data.profileImage;
-                              localStorage.setItem('user', JSON.stringify(user));
-                            }
-                          } catch {}
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-              <h4 className="mt-2 mb-0 fw-bold">{user.firstName || ''} {user.lastName || ''}</h4>
-              <div className="text-muted mb-2">Acct: <span className="fw-semibold">{user.accountNumber || ''}</span></div>
-              <div className="mb-3">
-                <span className="badge bg-success bg-gradient px-3 py-2 fs-6 shadow">{user.email}</span>
-              </div>
-              <hr className="my-4" />
-              {/* Settings Section */}
-              <div className="text-start mb-4">
-                <h5 className="fw-bold mb-3">Settings</h5>
-                <button className="btn btn-outline-primary rounded-pill mb-2 w-100 text-start" onClick={() => {
-                  setEditProfileData({
-                    firstName: user.firstName || '',
-                    lastName: user.lastName || '',
-                    email: user.email || ''
+      )}
+
+      {/* Profile Section */}
+      <div className="row g-4 mb-5">
+        {/* Profile Card */}
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              textAlign: 'center'
+            }}
+          >
+            {/* Profile Image with Upload Button */}
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '24px' }}>
+              <img
+                src={profileImage || `https://ui-avatars.com/api/?name=${user?.firstName}+${user?.lastName}&background=${COLORS.primary.substring(1)}&color=white&size=120`}
+                alt="profile"
+                style={{
+                  width: '120px',
+                  height: '120px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: `4px solid ${COLORS.primary}`,
+                  cursor: 'pointer'
+                }}
+                onClick={() => setShowImageModal(true)}
+              />
+              <button
+                onClick={() => setShowImageModal(true)}
+                style={{
+                  position: 'absolute',
+                  right: '0',
+                  bottom: '0',
+                  background: COLORS.primary,
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#3730A3';
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = COLORS.primary;
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                title="Upload photo"
+              >
+                <i className="fas fa-camera" style={{ color: 'white', fontSize: '16px' }}></i>
+              </button>
+            </div>
+
+            <h4 className="fw-bold mb-2" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              {user?.firstName} {user?.lastName}
+            </h4>
+
+            <p className="mb-1" style={{ color: COLORS.lightText, fontSize: '0.875rem' }}>
+              {user?.email}
+            </p>
+
+            <div className="d-flex align-items-center gap-2 mb-4">
+              <p className="mb-0" style={{ color: COLORS.lightText, fontSize: '0.875rem' }}>
+                Account: {hideAccountNumber ? '****' + (user?.accountNumber || 'N/A').slice(-4) : (user?.accountNumber || 'N/A')}
+              </p>
+              <button
+                onClick={() => setHideAccountNumber(!hideAccountNumber)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: COLORS.lightText,
+                  cursor: 'pointer',
+                  padding: '4px',
+                  fontSize: '0.9rem',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = COLORS.primary}
+                onMouseLeave={(e) => e.currentTarget.style.color = COLORS.lightText}
+                title={hideAccountNumber ? 'Show account number' : 'Hide account number'}
+              >
+                <i className={`fas fa-eye${hideAccountNumber ? '-slash' : ''}`}></i>
+              </button>
+            </div>
+
+            <div className="d-flex gap-2 flex-column">
+              <button
+                onClick={() => {
+                  setProfileData({
+                    firstName: user?.firstName || '',
+                    lastName: user?.lastName || '',
+                    email: user?.email || ''
                   });
-                  setEditProfileMsg('');
                   setShowEditProfile(true);
-                }}><i className="fas fa-user-cog me-2"></i>Edit Profile</button>
-                <button className="btn btn-outline-secondary rounded-pill mb-2 w-100 text-start" onClick={() => {
-                  setChangePasswordData({ oldPassword: '', newPassword: '' });
-                  setChangePasswordMsg('');
+                }}
+                className="btn fw-semibold"
+                style={{
+                  background: COLORS.primary,
+                  color: 'white',
+                  borderRadius: '12px',
+                  border: 'none',
+                  padding: '12px 24px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#3730A3'}
+                onMouseLeave={(e) => e.currentTarget.style.background = COLORS.primary}
+              >
+                <i className="fas fa-user-edit me-2"></i>Edit Profile
+              </button>
+
+              <button
+                onClick={() => {
+                  setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
                   setShowChangePassword(true);
-                }}><i className="fas fa-lock me-2"></i>Change Password</button>
-        {/* Edit Profile Modal */}
-        {showEditProfile && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Edit Profile</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowEditProfile(false)}></button>
-                </div>
-                <form onSubmit={async e => {
-                  e.preventDefault();
-                  setEditProfileMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/profile', {
-                      method: 'PUT',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      },
-                      body: JSON.stringify(editProfileData)
-                    });
-                    const data = await res.json();
-                    if (data.user) {
-                      setUser(data.user);
-                      setEditProfileMsg('Profile updated!');
-                      setTimeout(() => setShowEditProfile(false), 1000);
-                    } else {
-                      setEditProfileMsg(data.message || 'Update failed');
-                    }
-                  } catch {
-                    setEditProfileMsg('Update failed');
-                  }
-                }}>
-                  <div className="modal-body">
-                    <div className="mb-3">
-                      <label className="form-label">First Name</label>
-                      <input className="form-control" value={editProfileData.firstName} onChange={e => setEditProfileData(d => ({ ...d, firstName: e.target.value }))} required />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Last Name</label>
-                      <input className="form-control" value={editProfileData.lastName} onChange={e => setEditProfileData(d => ({ ...d, lastName: e.target.value }))} required />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Email</label>
-                      <input className="form-control" type="email" value={editProfileData.email} onChange={e => setEditProfileData(d => ({ ...d, email: e.target.value }))} required />
-                    </div>
-                    {editProfileMsg && <div className="alert alert-info">{editProfileMsg}</div>}
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowEditProfile(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-success">Save</button>
-                  </div>
-                </form>
-              </div>
+                }}
+                className="btn fw-semibold"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                  borderRadius: '12px',
+                  border: 'none',
+                  padding: '12px 24px',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDarkMode ? '#4B5563' : COLORS.lighter;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = isDarkMode ? '#374151' : COLORS.light;
+                }}
+              >
+                <i className="fas fa-lock me-2"></i>Change Password
+              </button>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Change Password Modal */}
-        {showChangePassword && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Change Password</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowChangePassword(false)}></button>
-                </div>
-                <form onSubmit={async e => {
-                  e.preventDefault();
-                  setChangePasswordMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/change-password', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      },
-                      body: JSON.stringify(changePasswordData)
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      setChangePasswordMsg('Password changed!');
-                      setTimeout(() => setShowChangePassword(false), 1000);
-                    } else {
-                      setChangePasswordMsg(data.message || 'Change failed');
-                    }
-                  } catch {
-                    setChangePasswordMsg('Change failed');
-                  }
-                }}>
-                  <div className="modal-body">
-                    <div className="mb-3">
-                      <label className="form-label">Old Password</label>
-                      <input className="form-control" type="password" value={changePasswordData.oldPassword} onChange={e => setChangePasswordData(d => ({ ...d, oldPassword: e.target.value }))} required />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">New Password</label>
-                      <input className="form-control" type="password" value={changePasswordData.newPassword} onChange={e => setChangePasswordData(d => ({ ...d, newPassword: e.target.value }))} required />
-                    </div>
-                    {changePasswordMsg && <div className="alert alert-info">{changePasswordMsg}</div>}
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowChangePassword(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-success">Change</button>
-                  </div>
-                </form>
+        {/* Account Information */}
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-info-circle me-2" style={{ color: COLORS.primary }}></i>
+              Account Information
+            </h5>
+
+            <div className="mb-4">
+              <p className="mb-1 small" style={{ color: COLORS.lightText }}>First Name</p>
+              <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                {user?.firstName || 'N/A'}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <p className="mb-1 small" style={{ color: COLORS.lightText }}>Last Name</p>
+              <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                {user?.lastName || 'N/A'}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <p className="mb-1 small" style={{ color: COLORS.lightText }}>Email Address</p>
+              <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                {user?.email || 'N/A'}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <p className="mb-1 small" style={{ color: COLORS.lightText }}>Account Number</p>
+              <div className="d-flex align-items-center gap-2">
+                <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  {hideAccountNumber ? '****' + (user?.accountNumber || 'N/A').slice(-4) : (user?.accountNumber || 'N/A')}
+                </p>
+                <button
+                  onClick={() => setHideAccountNumber(!hideAccountNumber)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: COLORS.lightText,
+                    cursor: 'pointer',
+                    padding: '4px',
+                    fontSize: '1rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = COLORS.primary}
+                  onMouseLeave={(e) => e.currentTarget.style.color = COLORS.lightText}
+                  title={hideAccountNumber ? 'Show account number' : 'Hide account number'}
+                >
+                  <i className={`fas fa-eye${hideAccountNumber ? '-slash' : ''}`}></i>
+                </button>
               </div>
             </div>
-          </div>
-        )}
-                <button className="btn btn-outline-info rounded-pill mb-2 w-100 text-start" onClick={async () => {
-                  setNotifMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/notification-prefs', {
-                      headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const data = await res.json();
-                    if (data.prefs) setNotifPrefs(data.prefs);
-                  } catch {}
-                  setShowNotifPrefs(true);
-                }}><i className="fas fa-bell me-2"></i>Notification Preferences</button>
-                <button className="btn btn-outline-warning rounded-pill mb-2 w-100 text-start" onClick={() => setShow2FA(true)}><i className="fas fa-shield-alt me-2"></i>Security & 2FA</button>
-        {/* Notification Preferences Modal */}
-        {showNotifPrefs && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Notification Preferences</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowNotifPrefs(false)}></button>
-                </div>
-                <form onSubmit={async e => {
-                  e.preventDefault();
-                  setNotifMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/notification-prefs', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                      body: JSON.stringify(notifPrefs)
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      setNotifMsg('Preferences updated!');
-                      setTimeout(() => setShowNotifPrefs(false), 1000);
-                    } else {
-                      setNotifMsg(data.message || 'Update failed');
-                    }
-                  } catch {
-                    setNotifMsg('Update failed');
-                  }
-                }}>
-                  <div className="modal-body">
-                    <div className="form-check mb-2">
-                      <input className="form-check-input" type="checkbox" id="notifEmail" checked={notifPrefs.email} onChange={e => setNotifPrefs(p => ({ ...p, email: e.target.checked }))} />
-                      <label className="form-check-label" htmlFor="notifEmail">Email Notifications</label>
-                    </div>
-                    <div className="form-check mb-2">
-                      <input className="form-check-input" type="checkbox" id="notifSMS" checked={notifPrefs.sms} onChange={e => setNotifPrefs(p => ({ ...p, sms: e.target.checked }))} />
-                      <label className="form-check-label" htmlFor="notifSMS">SMS Notifications</label>
-                    </div>
-                    <div className="form-check mb-2">
-                      <input className="form-check-input" type="checkbox" id="notifPush" checked={notifPrefs.push} onChange={e => setNotifPrefs(p => ({ ...p, push: e.target.checked }))} />
-                      <label className="form-check-label" htmlFor="notifPush">Push Notifications</label>
-                    </div>
-                    {notifMsg && <div className="alert alert-info mt-2">{notifMsg}</div>}
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowNotifPrefs(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-success">Save</button>
-                  </div>
-                </form>
-              </div>
+
+            <div>
+              <p className="mb-1 small" style={{ color: COLORS.lightText }}>Account Type</p>
+              <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                {user?.accountType || 'Standard'}
+              </p>
             </div>
           </div>
-        )}
-
-        {/* 2FA Modal */}
-        {show2FA && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Security & 2FA</h5>
-                  <button type="button" className="btn-close" onClick={() => setShow2FA(false)}></button>
-                </div>
-                <div className="modal-body">
-                  <div className="form-check form-switch mb-3">
-                    <input className="form-check-input" type="checkbox" id="2faSwitch" checked={twoFAEnabled} onChange={async e => {
-                      setTwoFAMsg('');
-                      try {
-                        const token = localStorage.getItem('token');
-                        if (e.target.checked) {
-                          // Enable 2FA
-                          const res = await fetch('https://full-bank-app.onrender.com/api/opay/2fa/enable', {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                          });
-                          const data = await res.json();
-                          if (data.secret) {
-                            setTwoFASecret(data.secret);
-                            setTwoFAEnabled(true);
-                            setTwoFAMsg('2FA enabled. Enter the code sent to your email.');
-                          }
-                        } else {
-                          // Disable 2FA
-                          await fetch('https://full-bank-app.onrender.com/api/opay/2fa/disable', {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                          });
-                          setTwoFAEnabled(false);
-                          setTwoFASecret('');
-                          setTwoFAMsg('2FA disabled.');
-                        }
-                      } catch { setTwoFAMsg('2FA update failed'); }
-                    }} />
-                    <label className="form-check-label" htmlFor="2faSwitch">Enable Two-Factor Authentication (2FA)</label>
-                  </div>
-                  {twoFAEnabled && (
-                    <div className="mb-3">
-                      <label className="form-label">Enter 2FA Code</label>
-                      <input className="form-control" value={twoFACode} onChange={e => setTwoFACode(e.target.value)} />
-                      <button className="btn btn-success mt-2" onClick={async () => {
-                        setTwoFAMsg('');
-                        try {
-                          const token = localStorage.getItem('token');
-                          const res = await fetch('https://full-bank-app.onrender.com/api/opay/2fa/verify', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                            body: JSON.stringify({ code: twoFACode })
-                          });
-                          const data = await res.json();
-                          if (data.success) setTwoFAMsg('2FA verified!');
-                          else setTwoFAMsg(data.message || 'Invalid code');
-                        } catch { setTwoFAMsg('Verification failed'); }
-                      }}>Verify</button>
-                    </div>
-                  )}
-                  {twoFAMsg && <div className="alert alert-info mt-2">{twoFAMsg}</div>}
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShow2FA(false)}>Close</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={async () => {
-                  setAppSettingsMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/app-settings', {
-                      headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const data = await res.json();
-                    if (data.settings) setAppSettings(data.settings);
-                  } catch {}
-                  setShowAppSettings(true);
-                }}><i className="fas fa-cog me-2"></i>App Settings</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={() => setShowPrivacy(true)}><i className="fas fa-user-secret me-2"></i>Account Privacy</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={async () => {
-                  setSessionsMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/sessions', {
-                      headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const data = await res.json();
-                    if (data.sessions) setSessions(data.sessions);
-                  } catch {}
-                  setShowSessions(true);
-                }}><i className="fas fa-desktop me-2"></i>Session Management</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={() => setShowDownload(true)}><i className="fas fa-download me-2"></i>Download My Data</button>
-                <button className="btn btn-outline-danger rounded-pill mb-2 w-100 text-start" onClick={() => setShowDelete(true)}><i className="fas fa-user-times me-2"></i>Delete Account</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={() => setShowTheme(true)}><i className="fas fa-palette me-2"></i>Theme Customization</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={() => setShowSupport(true)}><i className="fas fa-headset me-2"></i>Contact Support</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={async () => {
-                  setDevicesMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/devices', {
-                      headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const data = await res.json();
-                    if (data.devices) setDevices(data.devices);
-                  } catch {}
-                  setShowDevices(true);
-                }}><i className="fas fa-link me-2"></i>Linked Devices</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={() => setShowLimits(true)}><i className="fas fa-sliders-h me-2"></i>Transaction Limits</button>
-                <button className="btn btn-outline-dark rounded-pill mb-2 w-100 text-start" onClick={() => setShowAccessibility(true)}><i className="fas fa-universal-access me-2"></i>Accessibility</button>
-
-        {/* Account Privacy Modal */}
-        {showPrivacy && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Account Privacy</h5><button type="button" className="btn-close" onClick={() => setShowPrivacy(false)}></button></div>
-              <form onSubmit={async e => {
-                e.preventDefault(); setPrivacyMsg('');
-                try {
-                  const token = localStorage.getItem('token');
-                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/privacy', {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(privacy)
-                  });
-                  const data = await res.json();
-                  if (data.success) { setPrivacyMsg('Privacy updated!'); setTimeout(() => setShowPrivacy(false), 1000); }
-                  else setPrivacyMsg(data.message || 'Update failed');
-                } catch { setPrivacyMsg('Update failed'); }
-              }}>
-                <div className="modal-body">
-                  <div className="form-check mb-2">
-                    <input className="form-check-input" type="checkbox" id="hideBalance" checked={privacy.hideBalance} onChange={e => setPrivacy(p => ({ ...p, hideBalance: e.target.checked }))} />
-                    <label className="form-check-label" htmlFor="hideBalance">Hide Balance</label>
-                  </div>
-                  <div className="form-check mb-2">
-                    <input className="form-check-input" type="checkbox" id="hideAccountNumber" checked={privacy.hideAccountNumber} onChange={e => setPrivacy(p => ({ ...p, hideAccountNumber: e.target.checked }))} />
-                    <label className="form-check-label" htmlFor="hideAccountNumber">Hide Account Number</label>
-                  </div>
-                  {privacyMsg && <div className="alert alert-info mt-2">{privacyMsg}</div>}
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowPrivacy(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-success">Save</button>
-                </div>
-              </form>
-            </div></div>
-          </div>
-        )}
-
-        {/* Session Management Modal */}
-        {showSessions && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Session Management</h5><button type="button" className="btn-close" onClick={() => setShowSessions(false)}></button></div>
-              <div className="modal-body">
-                <ul className="list-group mb-2">
-                  {sessions.map((s, i) => (
-                    <li className="list-group-item d-flex justify-content-between align-items-center" key={i}>
-                      <span>{s.device || 'Device'} - {s.location || 'Unknown'} {s.current && <span className="badge bg-success ms-2">Current</span>}</span>
-                      {!s.current && <button className="btn btn-sm btn-danger" onClick={async () => {
-                        setSessionsMsg('');
-                        try {
-                          const token = localStorage.getItem('token');
-                          await fetch(`https://full-bank-app.onrender.com/api/auth/sessions/${s.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                          setSessions(sessions.filter((_, idx) => idx !== i));
-                        } catch { setSessionsMsg('Failed to revoke'); }
-                      }}>Revoke</button>}
-                    </li>
-                  ))}
-                </ul>
-                {sessionsMsg && <div className="alert alert-info mt-2">{sessionsMsg}</div>}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowSessions(false)}>Close</button>
-              </div>
-            </div></div>
-          </div>
-        )}
-
-        {/* Download Data Modal */}
-        {showDownload && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Download My Data</h5><button type="button" className="btn-close" onClick={() => setShowDownload(false)}></button></div>
-              <div className="modal-body">
-                <button className="btn btn-success w-100" onClick={async () => {
-                  setDownloadMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/download', { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.ok) {
-                      const blob = await res.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url; a.download = 'my-bank-data.zip';
-                      document.body.appendChild(a); a.click(); a.remove();
-                      setDownloadMsg('Download started!');
-                    } else setDownloadMsg('Download failed');
-                  } catch { setDownloadMsg('Download failed'); }
-                }}>Download All Data</button>
-                {downloadMsg && <div className="alert alert-info mt-2">{downloadMsg}</div>}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowDownload(false)}>Close</button>
-              </div>
-            </div></div>
-          </div>
-        )}
-
-        {/* Delete Account Modal */}
-        {showDelete && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Delete Account</h5><button type="button" className="btn-close" onClick={() => setShowDelete(false)}></button></div>
-              <div className="modal-body">
-                <p>Are you sure you want to delete your account? This action cannot be undone.</p>
-                <button className="btn btn-danger w-100" onClick={async () => {
-                  setDeleteMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/delete', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.ok) {
-                      setDeleteMsg('Account deleted. Logging out...');
-                      setTimeout(() => handleLogout(), 1500);
-                    } else setDeleteMsg('Delete failed');
-                  } catch { setDeleteMsg('Delete failed'); }
-                }}>Delete My Account</button>
-                {deleteMsg && <div className="alert alert-info mt-2">{deleteMsg}</div>}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowDelete(false)}>Cancel</button>
-              </div>
-            </div></div>
-          </div>
-        )}
-
-        {/* Theme Customization Modal */}
-        {showTheme && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Theme Customization</h5><button type="button" className="btn-close" onClick={() => setShowTheme(false)}></button></div>
-              <form onSubmit={async e => {
-                e.preventDefault(); setThemeMsg('');
-                try {
-                  const token = localStorage.getItem('token');
-                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/theme', {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(theme)
-                  });
-                  const data = await res.json();
-                  if (data.success) { setThemeMsg('Theme updated!'); setTimeout(() => setShowTheme(false), 1000); }
-                  else setThemeMsg(data.message || 'Update failed');
-                } catch { setThemeMsg('Update failed'); }
-              }}>
-                <div className="modal-body">
-                  <div className="mb-2">
-                    <label className="form-label">Accent Color</label>
-                    <input className="form-control form-control-color" type="color" value={theme.accent} onChange={e => setTheme(t => ({ ...t, accent: e.target.value }))} />
-                  </div>
-                  <div className="mb-2">
-                    <label className="form-label">Font Size</label>
-                    <input className="form-control" type="number" min={12} max={32} value={theme.fontSize} onChange={e => setTheme(t => ({ ...t, fontSize: Number(e.target.value) }))} />
-                  </div>
-                  {themeMsg && <div className="alert alert-info mt-2">{themeMsg}</div>}
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowTheme(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-success">Save</button>
-                </div>
-              </form>
-            </div></div>
-          </div>
-        )}
-
-        {/* Contact Support Modal */}
-        {showSupport && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Contact Support</h5><button type="button" className="btn-close" onClick={() => setShowSupport(false)}></button></div>
-              <form onSubmit={async e => {
-                e.preventDefault(); setSupportMsg('');
-                try {
-                  const token = localStorage.getItem('token');
-                  const res = await fetch('https://full-bank-app.onrender.com/api/support', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ message: supportMsg })
-                  });
-                  const data = await res.json();
-                  if (data.success) { setSupportMsg('Support request sent!'); setTimeout(() => setShowSupport(false), 1000); }
-                  else setSupportMsg(data.message || 'Failed to send');
-                } catch { setSupportMsg('Failed to send'); }
-              }}>
-                <div className="modal-body">
-                  <textarea className="form-control" rows={4} placeholder="Describe your issue..." value={supportMsg} onChange={e => setSupportMsg(e.target.value)} required />
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowSupport(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-success">Send</button>
-                </div>
-              </form>
-            </div></div>
-          </div>
-        )}
-
-        {/* Linked Devices Modal */}
-        {showDevices && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Linked Devices</h5><button type="button" className="btn-close" onClick={() => setShowDevices(false)}></button></div>
-              <div className="modal-body">
-                <ul className="list-group mb-2">
-                  {devices.map((d, i) => (
-                    <li className="list-group-item d-flex justify-content-between align-items-center" key={i}>
-                      <span>{d.name || 'Device'} - {d.lastActive || 'Unknown'}</span>
-                      <button className="btn btn-sm btn-danger" onClick={async () => {
-                        setDevicesMsg('');
-                        try {
-                          const token = localStorage.getItem('token');
-                          await fetch(`https://full-bank-app.onrender.com/api/auth/devices/${d.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                          setDevices(devices.filter((_, idx) => idx !== i));
-                        } catch { setDevicesMsg('Failed to remove'); }
-                      }}>Remove</button>
-                    </li>
-                  ))}
-                </ul>
-                {devicesMsg && <div className="alert alert-info mt-2">{devicesMsg}</div>}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowDevices(false)}>Close</button>
-              </div>
-            </div></div>
-          </div>
-        )}
-
-        {/* Transaction Limits Modal */}
-        {showLimits && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Transaction Limits</h5><button type="button" className="btn-close" onClick={() => setShowLimits(false)}></button></div>
-              <form onSubmit={async e => {
-                e.preventDefault(); setLimitsMsg('');
-                try {
-                  const token = localStorage.getItem('token');
-                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/limits', {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(limits)
-                  });
-                  const data = await res.json();
-                  if (data.success) { setLimitsMsg('Limits updated!'); setTimeout(() => setShowLimits(false), 1000); }
-                  else setLimitsMsg(data.message || 'Update failed');
-                } catch { setLimitsMsg('Update failed'); }
-              }}>
-                <div className="modal-body">
-                  <div className="mb-2">
-                    <label className="form-label">Daily Limit</label>
-                    <input className="form-control" type="number" min={0} value={limits.daily} onChange={e => setLimits(l => ({ ...l, daily: Number(e.target.value) }))} />
-                  </div>
-                  <div className="mb-2">
-                    <label className="form-label">Weekly Limit</label>
-                    <input className="form-control" type="number" min={0} value={limits.weekly} onChange={e => setLimits(l => ({ ...l, weekly: Number(e.target.value) }))} />
-                  </div>
-                  {limitsMsg && <div className="alert alert-info mt-2">{limitsMsg}</div>}
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowLimits(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-success">Save</button>
-                </div>
-              </form>
-            </div></div>
-          </div>
-        )}
-
-        {/* Accessibility Modal */}
-        {showAccessibility && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered"><div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title">Accessibility</h5><button type="button" className="btn-close" onClick={() => setShowAccessibility(false)}></button></div>
-              <form onSubmit={async e => {
-                e.preventDefault(); setAccessibilityMsg('');
-                try {
-                  const token = localStorage.getItem('token');
-                  const res = await fetch('https://full-bank-app.onrender.com/api/auth/accessibility', {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(accessibility)
-                  });
-                  const data = await res.json();
-                  if (data.success) { setAccessibilityMsg('Accessibility updated!'); setTimeout(() => setShowAccessibility(false), 1000); }
-                  else setAccessibilityMsg(data.message || 'Update failed');
-                } catch { setAccessibilityMsg('Update failed'); }
-              }}>
-                <div className="modal-body">
-                  <div className="form-check mb-2">
-                    <input className="form-check-input" type="checkbox" id="highContrast" checked={accessibility.highContrast} onChange={e => setAccessibility(a => ({ ...a, highContrast: e.target.checked }))} />
-                    <label className="form-check-label" htmlFor="highContrast">High Contrast</label>
-                  </div>
-                  <div className="mb-2">
-                    <label className="form-label">Text Size</label>
-                    <input className="form-control" type="number" min={12} max={32} value={accessibility.textSize} onChange={e => setAccessibility(a => ({ ...a, textSize: Number(e.target.value) }))} />
-                  </div>
-                  {accessibilityMsg && <div className="alert alert-info mt-2">{accessibilityMsg}</div>}
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowAccessibility(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-success">Save</button>
-                </div>
-              </form>
-            </div></div>
-          </div>
-        )}
-              </div>
-              <hr className="my-4" />
-              {/* Security Section */}
-              <div className="text-start mb-4">
-                <h5 className="fw-bold mb-3">Security & Fingerprint</h5>
-                <div className="form-check form-switch mb-3">
-                  <input className="form-check-input" type="checkbox" id="fingerprintSwitch" checked={fingerprintEnabled} onChange={handleFingerprintToggle} />
-                  <label className="form-check-label" htmlFor="fingerprintSwitch">Enable Fingerprint Sign-in</label>
-                </div>
-                {securityMessage && <div className="alert alert-info mt-2">{securityMessage}</div>}
-              </div>
-              <hr className="my-4" />
-              {/* KYC Section */}
-              <div className="text-start mb-4">
-                <h5 className="fw-bold mb-3">KYC Verification</h5>
-                <p>Status: <strong>{kycStatus}</strong></p>
-                <button className="btn btn-outline-success rounded-pill mb-2 w-100 text-start" onClick={() => setShowKycModal(true)}><i className="fas fa-id-card me-2"></i>Upload ID</button>
-        {/* App Settings Modal */}
-        {showAppSettings && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">App Settings</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowAppSettings(false)}></button>
-                </div>
-                <form onSubmit={async e => {
-                  e.preventDefault();
-                  setAppSettingsMsg('');
-                  try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch('https://full-bank-app.onrender.com/api/auth/app-settings', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                      body: JSON.stringify(appSettings)
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      setAppSettingsMsg('Settings updated!');
-                      setTimeout(() => setShowAppSettings(false), 1000);
-                    } else {
-                      setAppSettingsMsg(data.message || 'Update failed');
-                    }
-                  } catch {
-                    setAppSettingsMsg('Update failed');
-                  }
-                }}>
-                  <div className="modal-body">
-                    <div className="form-check mb-2">
-                      <input className="form-check-input" type="checkbox" id="darkMode" checked={appSettings.darkMode} onChange={e => setAppSettings(s => ({ ...s, darkMode: e.target.checked }))} />
-                      <label className="form-check-label" htmlFor="darkMode">Dark Mode</label>
-                    </div>
-                    <div className="mb-2">
-                      <label className="form-label">Language</label>
-                      <select className="form-select" value={appSettings.language} onChange={e => setAppSettings(s => ({ ...s, language: e.target.value }))}>
-                        <option value="en">English</option>
-                        <option value="fr">French</option>
-                        <option value="es">Spanish</option>
-                      </select>
-                    </div>
-                    <div className="form-check mb-2">
-                      <input className="form-check-input" type="checkbox" id="quickLogin" checked={appSettings.quickLogin} onChange={e => setAppSettings(s => ({ ...s, quickLogin: e.target.checked }))} />
-                      <label className="form-check-label" htmlFor="quickLogin">Enable Quick Login</label>
-                    </div>
-                    {appSettingsMsg && <div className="alert alert-info mt-2">{appSettingsMsg}</div>}
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowAppSettings(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-success">Save</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* KYC Modal */}
-        {showKycModal && (
-          <div className="modal fade show" style={{ display: 'block', background: 'rgba(0,0,0,0.4)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">KYC Verification</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowKycModal(false)}></button>
-                </div>
-                <form onSubmit={async e => {
-                  e.preventDefault();
-                  setKycMsg('');
-                  if (!kycFile) { setKycMsg('Please select a file'); return; }
-                  try {
-                    const token = localStorage.getItem('token');
-                    const formData = new FormData();
-                    formData.append('kyc', kycFile);
-                    const res = await fetch('https://full-bank-app.onrender.com/api/opay/kyc', {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${token}` },
-                      body: formData
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      setKycMsg('KYC uploaded! Pending verification.');
-                      setTimeout(() => setShowKycModal(false), 1000);
-                      setKycStatus('pending');
-                    } else {
-                      setKycMsg(data.message || 'Upload failed');
-                    }
-                  } catch {
-                    setKycMsg('Upload failed');
-                  }
-                }}>
-                  <div className="modal-body">
-                    <div className="mb-3">
-                      <label className="form-label">Upload ID Document</label>
-                      <input className="form-control" type="file" accept="image/*,application/pdf" onChange={e => setKycFile(e.target.files[0])} />
-                    </div>
-                    {kycMsg && <div className="alert alert-info mt-2">{kycMsg}</div>}
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowKycModal(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-success">Upload</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-              </div>
-            </div>
-          </div>
-        ) : <div className="text-center py-5"><div className="spinner-border" /></div>}
-  {/* No duplicate cards below! */}
+        </div>
       </div>
-      <BottomNav />
-    </div>
+
+      {/* Account Upgrade Section */}
+      <div className="mb-5">
+        <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+          <i className="fas fa-crown me-2" style={{ color: COLORS.warning }}></i>
+          Upgrade Your Account
+        </h5>
+        <div className="row g-4">
+          {[
+            {
+              tier: 'Standard',
+              name: 'Standard',
+              icon: '⭐',
+              price: '₦0',
+              period: 'Forever Free',
+              features: [
+                'Basic account features',
+                '₦100,000 daily limit',
+                '₦500,000 monthly limit',
+                'Email support',
+                'Standard security'
+              ],
+              button: 'Current Plan',
+              buttonColor: COLORS.primary,
+              isCurrentTier: !user?.accountType || user?.accountType === 'Standard'
+            },
+            {
+              tier: 'Premium',
+              name: 'Premium',
+              icon: '💎',
+              price: '₦4,999',
+              period: 'one-time',
+              features: [
+                'All Standard features',
+                '₦500,000 daily limit',
+                '₦5,000,000 monthly limit',
+                'Priority email support',
+                'Enhanced security',
+                'Exclusive features'
+              ],
+              button: 'Upgrade Now',
+              buttonColor: COLORS.success,
+              isCurrentTier: user?.accountType === 'Premium'
+            },
+            {
+              tier: 'Business',
+              name: 'Business',
+              icon: '👑',
+              price: '₦9,999',
+              period: 'one-time',
+              features: [
+                'All Premium features',
+                'No daily limit',
+                'Unlimited monthly limit',
+                '24/7 dedicated support',
+                'Maximum security',
+                'VIP benefits',
+                'Priority processing'
+              ],
+              button: 'Get Business',
+              buttonColor: '#FFD700',
+              isCurrentTier: user?.accountType === 'Business'
+            }
+          ].map((plan) => (
+            <div key={plan.tier} className="col-lg-4">
+              <div
+                style={{
+                  background: isDarkMode ? '#1F2937' : COLORS.card,
+                  borderRadius: '16px',
+                  padding: '32px',
+                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+                  border: plan.isCurrentTier ? `2px solid ${COLORS.success}` : (isDarkMode ? '1px solid #374151' : 'none'),
+                  position: 'relative',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!plan.isCurrentTier) {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.boxShadow = isDarkMode ? 'none' : '0 8px 24px rgba(0,0,0,0.12)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!plan.isCurrentTier) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)';
+                  }
+                }}
+              >
+                {plan.isCurrentTier && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 16,
+                      right: 16,
+                      background: COLORS.success,
+                      color: 'white',
+                      borderRadius: '8px',
+                      padding: '4px 12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ACTIVE
+                  </div>
+                )}
+
+                <div style={{ fontSize: '2rem', marginBottom: '12px' }} aria-hidden="true">
+                  {plan.icon}
+                </div>
+
+                <h6 className="fw-bold mb-2" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                  {plan.name}
+                </h6>
+
+                <div className="mb-4">
+                  <h4 className="fw-bold mb-0" style={{ color: COLORS.primary }}>
+                    {plan.price}
+                  </h4>
+                  <p className="small mb-0" style={{ color: COLORS.lightText }}>
+                    {plan.period}
+                  </p>
+                </div>
+
+                <div className="mb-4">
+                  {plan.features.map((feature, idx) => (
+                    <div key={idx} className="d-flex align-items-start mb-2">
+                      <i className="fas fa-check me-2" style={{ color: COLORS.success, marginTop: '2px', fontSize: '0.75rem' }}></i>
+                      <p className="small mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                        {feature}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  className="btn w-100 fw-semibold"
+                  style={{
+                    background: plan.isCurrentTier ? '#6B7280' : plan.buttonColor,
+                    color: plan.buttonColor === '#FFD700' ? '#000' : 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    padding: '12px 24px',
+                    cursor: plan.isCurrentTier ? 'default' : 'pointer',
+                    opacity: plan.isCurrentTier ? 0.7 : 1,
+                    transition: 'all 0.3s ease'
+                  }}
+                  disabled={plan.isCurrentTier}
+                  onClick={async () => {
+                    if (!plan.isCurrentTier) {
+                      // Show upgrade confirmation modal
+                      setPendingUpgrade(plan);
+                      setShowUpgradeConfirm(true);
+                    }
+                  }}
+                >
+                  {plan.isCurrentTier ? 'Current Plan' : 'Upgrade'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Upgrade Confirmation Modal */}
+      <ConfirmModal
+        show={showUpgradeConfirm}
+        onClose={() => {
+          setShowUpgradeConfirm(false);
+          setPendingUpgrade(null);
+        }}
+        onConfirm={async () => {
+          if (pendingUpgrade) {
+            try {
+              const plan = pendingUpgrade;
+              const token = localStorage.getItem('token');
+              const response = await axios.post(
+                API_ENDPOINTS.UPGRADE_ACCOUNT,
+                { accountType: plan.tier },
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              
+              // Update user context with new balance and account type
+              setUser(response.data.user);
+              
+              // Update localStorage
+              localStorage.setItem('user', JSON.stringify(response.data.user));
+              
+              setMessage(
+                `🎉 Successfully upgraded to ${plan.name}! ₦${response.data.upgradeCost?.toLocaleString('en-NG') || plan.price} has been deducted from your balance.`
+              );
+              setMessageType('success');
+              setTimeout(() => setMessage(''), 6000);
+            } catch (error) {
+              const errorMsg = error.response?.data?.message || 'Upgrade failed. Please try again.';
+              setMessage(errorMsg);
+              setMessageType('error');
+              setTimeout(() => setMessage(''), 5000);
+            }
+          }
+          setShowUpgradeConfirm(false);
+          setPendingUpgrade(null);
+        }}
+        title="Upgrade Account"
+        message={pendingUpgrade ? `Are you sure you want to upgrade to ${pendingUpgrade.name}?\n\nUpgrade cost: ₦${pendingUpgrade.price}\n\nThis amount will be deducted from your account balance.` : ''}
+        confirmText="Upgrade Now"
+        confirmColor="#10B981"
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Settings Options */}
+      <div className="row g-4 mb-5">
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-sliders-h me-2" style={{ color: COLORS.primary }}></i>
+              Preferences
+            </h5>
+
+            <div className="d-flex align-items-center justify-content-between mb-3 pb-3" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <div>
+                <p className="fw-semibold mb-1" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  Email Notifications
+                </p>
+                <p className="small" style={{ color: COLORS.lightText }}>Receive email updates</p>
+              </div>
+              <label style={{ marginBottom: 0 }}>
+                <input type="checkbox" defaultChecked style={{ cursor: 'pointer' }} />
+              </label>
+            </div>
+
+            <div className="d-flex align-items-center justify-content-between mb-3 pb-3" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <div>
+                <p className="fw-semibold mb-1" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  SMS Notifications
+                </p>
+                <p className="small" style={{ color: COLORS.lightText }}>Receive SMS alerts</p>
+              </div>
+              <label style={{ marginBottom: 0 }}>
+                <input type="checkbox" style={{ cursor: 'pointer' }} />
+              </label>
+            </div>
+
+            <div className="d-flex align-items-center justify-content-between">
+              <div>
+                <p className="fw-semibold mb-1" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  Push Notifications
+                </p>
+                <p className="small" style={{ color: COLORS.lightText }}>Receive push notifications</p>
+              </div>
+              <label style={{ marginBottom: 0 }}>
+                <input type="checkbox" defaultChecked style={{ cursor: 'pointer' }} />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-shield-alt me-2" style={{ color: COLORS.primary }}></i>
+              Security
+            </h5>
+
+            <div className="d-flex align-items-center justify-content-between mb-3 pb-3" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <div>
+                <p className="fw-semibold mb-1" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  Two-Factor Authentication
+                </p>
+                <p className="small" style={{ color: COLORS.lightText }}>Enhance your security</p>
+              </div>
+              <label style={{ marginBottom: 0 }}>
+                <input type="checkbox" style={{ cursor: 'pointer' }} />
+              </label>
+            </div>
+
+            <div className="d-flex align-items-center justify-content-between mb-3 pb-3" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <div>
+                <p className="fw-semibold mb-1" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  Biometric Login
+                </p>
+                <p className="small" style={{ color: COLORS.lightText }}>Use fingerprint/face ID</p>
+              </div>
+              <label style={{ marginBottom: 0 }}>
+                <input type="checkbox" style={{ cursor: 'pointer' }} />
+              </label>
+            </div>
+
+            <button
+              className="btn w-100 fw-semibold"
+              style={{
+                background: COLORS.danger,
+                color: 'white',
+                borderRadius: '12px',
+                border: 'none',
+                padding: '12px 24px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#DC2626'}
+              onMouseLeave={(e) => e.currentTarget.style.background = COLORS.danger}
+              onClick={() => setShowLogoutConfirm(true)}
+            >
+              <i className="fas fa-sign-out-alt me-2"></i>Log Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Language & Currency Settings */}
+      <div className="row g-4 mb-5">
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-globe me-2" style={{ color: COLORS.primary }}></i>
+              Language & Region
+            </h5>
+
+            <div className="mb-3 pb-3" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <label className="fw-semibold mb-2 d-block" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                Language
+              </label>
+              <select 
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="form-select"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                  color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="English">English</option>
+                <option value="Spanish">Spanish (Español)</option>
+                <option value="French">French (Français)</option>
+                <option value="German">German (Deutsch)</option>
+                <option value="Portuguese">Portuguese (Português)</option>
+                <option value="Chinese">Chinese (中文)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="fw-semibold mb-2 d-block" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                Currency Display
+              </label>
+              <select 
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="form-select"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                  color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="USD">USD - US Dollar ($)</option>
+                <option value="EUR">EUR - Euro (€)</option>
+                <option value="GBP">GBP - British Pound (£)</option>
+                <option value="NGN">NGN - Nigerian Naira (₦)</option>
+                <option value="JPY">JPY - Japanese Yen (¥)</option>
+                <option value="CNY">CNY - Chinese Yuan (¥)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-palette me-2" style={{ color: COLORS.primary }}></i>
+              Display Settings
+            </h5>
+
+            <div className="mb-3 pb-3" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <label className="fw-semibold mb-2 d-block" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                Theme
+              </label>
+              <select 
+                value={themePreference}
+                onChange={(e) => setThemePreference(e.target.value)}
+                className="form-select"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                  color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="Auto">Auto (System preference)</option>
+                <option value="Light">Light</option>
+                <option value="Dark">Dark</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="fw-semibold mb-2 d-block" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                Display Density
+              </label>
+              <select 
+                value={displayDensity}
+                onChange={(e) => setDisplayDensity(e.target.value)}
+                className="form-select"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                  color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="Comfortable">Comfortable</option>
+                <option value="Compact">Compact</option>
+                <option value="Spacious">Spacious</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Privacy & Account Management */}
+      <div className="row g-4 mb-5">
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-user-shield me-2" style={{ color: COLORS.primary }}></i>
+              Privacy Settings
+            </h5>
+
+            <div className="text-center py-4">
+              <i className="fas fa-eye" style={{ fontSize: '3rem', color: COLORS.primary, opacity: 0.3, marginBottom: '16px' }}></i>
+              <p style={{ color: COLORS.lightText, fontSize: '0.875rem', marginBottom: '8px' }}>
+                Use the eye icons next to your balance and account number to toggle visibility.
+              </p>
+              <p style={{ color: COLORS.lightText, fontSize: '0.75rem' }}>
+                <i className="fas fa-info-circle me-1"></i>
+                Look for the <i className="fas fa-eye mx-1"></i> icon on your dashboard and profile
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-cog me-2" style={{ color: COLORS.primary }}></i>
+              Account Management
+            </h5>
+
+            <div className="mb-3 pb-3" style={{ borderBottom: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <label className="fw-semibold mb-2 d-block" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                Session Timeout
+              </label>
+              <select 
+                value={sessionTimeout}
+                onChange={(e) => setSessionTimeout(e.target.value)}
+                className="form-select"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                  color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="15 minutes">15 minutes</option>
+                <option value="30 minutes">30 minutes</option>
+                <option value="1 hour">1 hour</option>
+                <option value="2 hours">2 hours</option>
+                <option value="Never">Never</option>
+              </select>
+            </div>
+
+            <div className="d-flex gap-2">
+              <button
+                onClick={() => setShowLoginActivity(true)}
+                className="btn w-100 fw-semibold"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                  borderRadius: '8px',
+                  border: 'none',
+                  padding: '10px',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = isDarkMode ? '#4B5563' : '#E5E7EB'}
+                onMouseLeave={(e) => e.currentTarget.style.background = isDarkMode ? '#374151' : COLORS.light}
+              >
+                <i className="fas fa-history me-2"></i>Login Activity
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Transaction Limits & Statements */}
+      <div className="row g-4 mb-5">
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-chart-line me-2" style={{ color: COLORS.primary }}></i>
+              Transaction Limits
+            </h5>
+
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <span style={{ color: COLORS.lightText, fontSize: '0.875rem' }}>Daily Transfer Limit</span>
+                <span className="fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                  ${user?.accountType === 'Premium' ? '50,000' : user?.accountType === 'Business' ? '100,000' : '10,000'}
+                </span>
+              </div>
+              <div className="progress" style={{ height: '8px', background: isDarkMode ? '#374151' : '#E5E7EB', borderRadius: '4px' }}>
+                <div
+                  className="progress-bar"
+                  style={{
+                    width: '35%',
+                    background: `linear-gradient(90deg, ${COLORS.primary}, #764ba2)`,
+                    borderRadius: '4px'
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <span style={{ color: COLORS.lightText, fontSize: '0.875rem' }}>Monthly Withdrawal Limit</span>
+                <span className="fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                  ${user?.accountType === 'Premium' ? '200,000' : user?.accountType === 'Business' ? '500,000' : '50,000'}
+                </span>
+              </div>
+              <div className="progress" style={{ height: '8px', background: isDarkMode ? '#374151' : '#E5E7EB', borderRadius: '4px' }}>
+                <div
+                  className="progress-bar"
+                  style={{
+                    width: '62%',
+                    background: `linear-gradient(90deg, #10B981, #059669)`,
+                    borderRadius: '4px'
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            <p className="small mb-0" style={{ color: COLORS.lightText }}>
+              <i className="fas fa-info-circle me-1"></i>
+              Upgrade your account for higher limits
+            </p>
+          </div>
+        </div>
+
+        <div className="col-lg-6">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '32px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-file-download me-2" style={{ color: COLORS.primary }}></i>
+              Statement Downloads
+            </h5>
+
+            <p className="mb-3" style={{ color: COLORS.lightText, fontSize: '0.875rem' }}>
+              Download your transaction history and statements
+            </p>
+
+            <div className="d-flex flex-column gap-2">
+              <button
+                className="btn fw-semibold"
+                style={{
+                  background: COLORS.primary,
+                  color: 'white',
+                  borderRadius: '8px',
+                  border: 'none',
+                  padding: '10px',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#3730A3'}
+                onMouseLeave={(e) => e.currentTarget.style.background = COLORS.primary}
+              >
+                <i className="fas fa-download me-2"></i>Download This Month
+              </button>
+
+              <button
+                className="btn fw-semibold"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                  borderRadius: '8px',
+                  border: 'none',
+                  padding: '10px',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = isDarkMode ? '#4B5563' : '#E5E7EB'}
+                onMouseLeave={(e) => e.currentTarget.style.background = isDarkMode ? '#374151' : COLORS.light}
+              >
+                <i className="fas fa-calendar-alt me-2"></i>Custom Date Range
+              </button>
+
+              <button
+                className="btn fw-semibold"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                  borderRadius: '8px',
+                  border: 'none',
+                  padding: '10px',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = isDarkMode ? '#4B5563' : '#E5E7EB'}
+                onMouseLeave={(e) => e.currentTarget.style.background = isDarkMode ? '#374151' : COLORS.light}
+              >
+                <i className="fas fa-file-pdf me-2"></i>Tax Documents
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+          onClick={() => setShowEditProfile(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: 'clamp(20px, 4vw, 32px)',
+              maxWidth: '500px',
+              width: '100%',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                Edit Profile
+              </h5>
+              <button
+                onClick={() => setShowEditProfile(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: isDarkMode ? '#9CA3AF' : COLORS.lightText
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleProfileUpdate}>
+              <div className="mb-3">
+                <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={profileData.firstName}
+                  onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                    color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                    borderRadius: '12px'
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={profileData.lastName}
+                  onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                    color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                    borderRadius: '12px'
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  className="form-control"
+                  value={profileData.email}
+                  disabled
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                    color: isDarkMode ? '#9CA3AF' : COLORS.lightText,
+                    borderRadius: '12px',
+                    cursor: 'not-allowed'
+                  }}
+                />
+                <small style={{ color: COLORS.lightText }}>Email cannot be changed</small>
+              </div>
+
+              <div className="d-flex gap-2">
+                <button
+                  type="submit"
+                  className="btn flex-grow-1 fw-semibold"
+                  style={{
+                    background: COLORS.primary,
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    padding: '12px'
+                  }}
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEditProfile(false)}
+                  className="btn flex-grow-1 fw-semibold"
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                    borderRadius: '12px',
+                    border: 'none',
+                    padding: '12px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+          onClick={() => setShowChangePassword(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: 'clamp(20px, 4vw, 32px)',
+              maxWidth: '500px',
+              width: '100%',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                Change Password
+              </h5>
+              <button
+                onClick={() => setShowChangePassword(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: isDarkMode ? '#9CA3AF' : COLORS.lightText
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordChange}>
+              <div className="mb-3">
+                <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={passwordData.oldPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                    color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                    borderRadius: '12px'
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                    color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                    borderRadius: '12px'
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                    color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                    borderRadius: '12px'
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="d-flex gap-2">
+                <button
+                  type="submit"
+                  className="btn flex-grow-1 fw-semibold"
+                  style={{
+                    background: COLORS.primary,
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: 'none',
+                    padding: '12px'
+                  }}
+                >
+                  Update Password
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowChangePassword(false)}
+                  className="btn flex-grow-1 fw-semibold"
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                    borderRadius: '12px',
+                    border: 'none',
+                    padding: '12px'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Image Upload Modal */}
+      {showImageModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+          onClick={() => setShowImageModal(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: 'clamp(20px, 4vw, 32px)',
+              maxWidth: '500px',
+              width: '100%',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                Upload Profile Photo
+              </h5>
+              <button
+                onClick={() => setShowImageModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: isDarkMode ? '#9CA3AF' : COLORS.lightText
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {profileImage && (
+              <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+                <img
+                  src={profileImage}
+                  alt="preview"
+                  style={{
+                    maxWidth: '200px',
+                    height: '200px',
+                    borderRadius: '12px',
+                    objectFit: 'cover',
+                    marginBottom: '12px'
+                  }}
+                />
+              </div>
+            )}
+
+            <div
+              style={{
+                border: `2px dashed ${COLORS.primary}`,
+                borderRadius: '12px',
+                padding: '32px',
+                textAlign: 'center',
+                marginBottom: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                background: isDarkMode ? '#374151' : '#F9FAFB'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDarkMode ? '#4B5563' : COLORS.light;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDarkMode ? '#374151' : '#F9FAFB';
+              }}
+              onClick={() => document.getElementById('image-input').click()}
+            >
+              <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', color: COLORS.primary, marginBottom: '12px', display: 'block' }}></i>
+              <p className="fw-semibold mb-1" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                Click to upload or drag and drop
+              </p>
+              <p className="small mb-0" style={{ color: COLORS.lightText }}>
+                PNG, JPG, GIF up to 5MB
+              </p>
+              <input
+                id="image-input"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+                disabled={uploading}
+              />
+            </div>
+
+            <div className="d-flex gap-2">
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="btn flex-grow-1 fw-semibold"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                  borderRadius: '12px',
+                  border: 'none',
+                  padding: '12px'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => document.getElementById('image-input').click()}
+                disabled={uploading}
+                className="btn flex-grow-1 fw-semibold"
+                style={{
+                  background: uploading ? '#9CA3AF' : COLORS.primary,
+                  color: 'white',
+                  borderRadius: '12px',
+                  border: 'none',
+                  padding: '12px',
+                  cursor: uploading ? 'not-allowed' : 'pointer',
+                  opacity: uploading ? 0.7 : 1
+                }}
+              >
+                {uploading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" style={{ width: '16px', height: '16px' }} />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-upload me-2"></i>
+                    Choose File
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Login Activity Modal */}
+      {showLoginActivity && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+          onClick={() => setShowLoginActivity(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: 'clamp(20px, 4vw, 32px)',
+              maxWidth: '600px',
+              width: '100%',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                <i className="fas fa-history me-2" style={{ color: COLORS.primary }}></i>
+                Login Activity
+              </h5>
+              <button
+                onClick={() => setShowLoginActivity(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: isDarkMode ? '#9CA3AF' : COLORS.lightText
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="mb-4" style={{ color: COLORS.lightText, fontSize: '0.875rem' }}>
+              Recent login activity and device information
+            </p>
+
+            {/* Current Session */}
+            <div 
+              className="mb-3 p-3"
+              style={{
+                background: isDarkMode ? '#374151' : COLORS.light,
+                borderRadius: '12px',
+                border: `2px solid ${COLORS.success}`
+              }}
+            >
+              <div className="d-flex align-items-start gap-3">
+                <div 
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    background: `${COLORS.success}22`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <i className="fas fa-check-circle" style={{ color: COLORS.success, fontSize: '20px' }}></i>
+                </div>
+                <div className="flex-grow-1">
+                  <div className="d-flex justify-content-between align-items-start mb-1">
+                    <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                      Current Session
+                    </p>
+                    <span 
+                      className="badge"
+                      style={{
+                        background: COLORS.success,
+                        color: 'white',
+                        fontSize: '0.7rem',
+                        padding: '4px 8px'
+                      }}
+                    >
+                      ACTIVE
+                    </span>
+                  </div>
+                  <p className="mb-1 small" style={{ color: COLORS.lightText }}>
+                    <i className="fas fa-laptop me-2"></i>Windows • Chrome
+                  </p>
+                  <p className="mb-1 small" style={{ color: COLORS.lightText }}>
+                    <i className="fas fa-map-marker-alt me-2"></i>Lagos, Nigeria
+                  </p>
+                  <p className="mb-0 small" style={{ color: COLORS.lightText }}>
+                    <i className="fas fa-clock me-2"></i>Today at {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Previous Sessions */}
+            {[
+              { device: 'iPhone 14', location: 'Abuja, Nigeria', time: 'Yesterday at 3:45 PM', browser: 'Safari' },
+              { device: 'Windows PC', location: 'Lagos, Nigeria', time: '3 days ago at 9:30 AM', browser: 'Edge' },
+              { device: 'Android Phone', location: 'Port Harcourt, Nigeria', time: '1 week ago at 6:15 PM', browser: 'Chrome' }
+            ].map((session, index) => (
+              <div 
+                key={index}
+                className="mb-3 p-3"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  borderRadius: '12px'
+                }}
+              >
+                <div className="d-flex align-items-start gap-3">
+                  <div 
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: isDarkMode ? '#4B5563' : '#E5E7EB',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <i className="fas fa-mobile-alt" style={{ color: COLORS.lightText, fontSize: '18px' }}></i>
+                  </div>
+                  <div className="flex-grow-1">
+                    <p className="fw-semibold mb-1" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                      {session.device}
+                    </p>
+                    <p className="mb-1 small" style={{ color: COLORS.lightText }}>
+                      <i className="fas fa-globe me-2"></i>{session.browser}
+                    </p>
+                    <p className="mb-1 small" style={{ color: COLORS.lightText }}>
+                      <i className="fas fa-map-marker-alt me-2"></i>{session.location}
+                    </p>
+                    <p className="mb-0 small" style={{ color: COLORS.lightText }}>
+                      <i className="fas fa-clock me-2"></i>{session.time}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="mt-4 pt-3" style={{ borderTop: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB' }}>
+              <p className="small mb-2" style={{ color: COLORS.lightText }}>
+                <i className="fas fa-info-circle me-2"></i>
+                If you notice any suspicious activity, change your password immediately.
+              </p>
+              <button
+                className="btn w-100 fw-semibold"
+                style={{
+                  background: COLORS.danger,
+                  color: 'white',
+                  borderRadius: '8px',
+                  border: 'none',
+                  padding: '10px',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#DC2626'}
+                onMouseLeave={(e) => e.currentTarget.style.background = COLORS.danger}
+              >
+                <i className="fas fa-times-circle me-2"></i>End All Other Sessions
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Confirmation Modal */}
+      <ConfirmModal
+        show={showUpgradeConfirm}
+        onClose={() => { setShowUpgradeConfirm(false); setPendingUpgrade(null); }}
+        onConfirm={async () => {
+          if (!pendingUpgrade) return;
+          try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(
+              API_ENDPOINTS.UPGRADE_ACCOUNT,
+              { accountType: pendingUpgrade.plan },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (res.data.user) {
+              const updatedUser = res.data.user;
+              setUser(updatedUser);
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+              setShowUpgradeConfirm(false);
+              setPendingUpgrade(null);
+            }
+          } catch (err) {
+            setShowUpgradeConfirm(false);
+            setPendingUpgrade(null);
+          }
+        }}
+        title="Upgrade Account"
+        message={`Upgrade to ${pendingUpgrade?.name}? | Cost: ₦${pendingUpgrade?.price} | This will be deducted from your balance.`}
+        confirmText="Upgrade"
+        confirmColor="#10B981"
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        show={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={() => { logout(); navigate('/signin'); }}
+        title="Log Out"
+        message="Are you sure you want to log out?"
+        confirmText="Log Out"
+        confirmColor="#EF4444"
+        isDarkMode={isDarkMode}
+      />
+    </PageLayout>
   );
 };
 
