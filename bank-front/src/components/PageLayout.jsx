@@ -24,13 +24,17 @@ const PageLayout = ({ children, pageTitle, pageSubtitle }) => {
 
   const menuItems = [
     { label: 'Dashboard', icon: 'fa-home', path: '/dashboard' },
-    { label: 'Transactions', icon: 'fa-exchange-alt', path: '/transactions' },
     { label: 'Accounts', icon: 'fa-wallet', path: '/accounts' },
-    { label: 'Investments', icon: 'fa-chart-line', path: '/savings' },
-    { label: 'Credit Cards', icon: 'fa-credit-card', path: '/cards' },
+    { label: 'Transfers', icon: 'fa-exchange-alt', path: '/transfer' },
+    { label: 'Transactions', icon: 'fa-history', path: '/transactions' },
+    { label: 'Bill Payments', icon: 'fa-file-invoice', path: '/bill-payments' },
+    { label: 'Cards', icon: 'fa-credit-card', path: '/cards' },
+    { label: 'Savings', icon: 'fa-chart-line', path: '/savings' },
     { label: 'Loans', icon: 'fa-handshake', path: '/loans' },
-    { label: 'Services', icon: 'fa-cog', path: '/airtime-data' },
-    { label: 'My Privileges', icon: 'fa-crown', path: '/me' }
+    { label: 'Finances', icon: 'fa-money-bill-wave', path: '/finances' },
+    { label: 'Airtime & Data', icon: 'fa-mobile-alt', path: '/airtime-data' },
+    { label: 'Profile', icon: 'fa-user-circle', path: '/profile' },
+    { label: 'Settings', icon: 'fa-cog', path: '/me' }
   ];
 
   return (

@@ -20,6 +20,7 @@ const Loans = () => {
   const [repayAmount, setRepayAmount] = useState('');
   const [repayMessage, setRepayMessage] = useState('');
   const [repayLoading, setRepayLoading] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
   const { isDarkMode, user, setUser } = useAppContext();
 
   useEffect(() => {
@@ -173,6 +174,30 @@ const Loans = () => {
       setRepayMessage(error.response?.data?.message || 'Failed to process repayment');
     } finally {
       setRepayLoading(false);
+    }
+  };
+
+  const approveLoanApplication = async (applicationId) => {
+    setApprovingId(applicationId);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        API_ENDPOINTS.LOAN_APPROVE(applicationId),
+        { status: 'approved' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Refresh user data
+      const dashboardResponse = await axios.get(API_ENDPOINTS.DASHBOARD, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (dashboardResponse.data.user) {
+        setUser(dashboardResponse.data.user);
+      }
+    } catch (error) {
+      console.error('Error approving loan:', error);
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -407,18 +432,35 @@ const Loans = () => {
                     )}
 
                     {application.status === 'pending' && (
-                      <div
+                      <button
+                        className="btn w-100 fw-semibold"
+                        disabled={approvingId === application._id}
                         style={{
-                          background: '#FEF3C7',
-                          color: '#78350F',
+                          background: '#F59E0B',
+                          color: 'white',
                           borderRadius: '12px',
-                          padding: '12px',
-                          textAlign: 'center',
-                          fontSize: '0.9rem'
+                          border: 'none',
+                          padding: '10px',
+                          fontSize: '0.9rem',
+                          transition: 'all 0.3s ease',
+                          opacity: approvingId === application._id ? 0.6 : 1,
+                          cursor: approvingId === application._id ? 'not-allowed' : 'pointer'
                         }}
+                        onClick={() => approveLoanApplication(application._id)}
+                        onMouseEnter={(e) => {
+                          if (approvingId !== application._id) {
+                            e.currentTarget.style.background = '#D97706';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (approvingId !== application._id) {
+                            e.currentTarget.style.background = '#F59E0B';
+                          }
+                        }}
+                        title="Approve this loan for testing purposes"
                       >
-                        Your application is under review
-                      </div>
+                        {approvingId === application._id ? 'Approving...' : 'Approve for Testing'}
+                      </button>
                     )}
 
                     {application.reason && (
