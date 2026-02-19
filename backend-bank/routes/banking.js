@@ -632,4 +632,69 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
     }
 });
 
+// Approve/Reject loan application (admin or auto-approval)
+router.post('/loans/:applicationId/approve', authenticateToken, async (req, res) => {
+    try {
+        const { status } = req.body; // 'approved' or 'rejected'
+        const { applicationId } = req.params;
+
+        if (!status || !['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Valid status is required (approved or rejected)' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!user.loanApplications || user.loanApplications.length === 0) {
+            return res.status(404).json({ message: 'No loan applications found' });
+        }
+
+        const applicationIndex = user.loanApplications.findIndex(
+            app => app._id?.toString() === applicationId
+        );
+
+        if (applicationIndex === -1) {
+            return res.status(404).json({ message: 'Loan application not found' });
+        }
+
+        const application = user.loanApplications[applicationIndex];
+
+        // Update status
+        application.status = status;
+        application.approvedAt = new Date();
+
+        // If approved, add notification
+        if (status === 'approved') {
+            if (!user.notifications) user.notifications = [];
+            user.notifications.push({
+                message: `Your ${application.loanName} loan application for ₦${application.amount.toLocaleString()} has been approved!`,
+                read: false,
+                createdAt: new Date()
+            });
+        }
+
+        // If rejected, add notification
+        if (status === 'rejected') {
+            if (!user.notifications) user.notifications = [];
+            user.notifications.push({
+                message: `Your ${application.loanName} loan application has been rejected.`,
+                read: false,
+                createdAt: new Date()
+            });
+        }
+
+        await user.save();
+
+        res.status(200).json({
+            message: `Loan application ${status} successfully`,
+            application
+        });
+    } catch (error) {
+        console.error('Loan approval error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 module.exports = router;
