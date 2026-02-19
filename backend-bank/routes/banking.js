@@ -440,6 +440,7 @@ router.post('/loans/apply', authenticateToken, async (req, res) => {
         };
 
         user.loanApplications.push(application);
+        user.markModified('loanApplications');
         await user.save();
 
         res.status(201).json({ message: 'Loan application submitted', application });
@@ -610,6 +611,9 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
             application.status = 'partial-repayment';
         }
 
+        // Mark array as modified for Mongoose
+        user.markModified('loanApplications');
+
         // Record transaction if transactions array exists
         if (!user.transactions) user.transactions = [];
         user.transactions.push({
@@ -685,6 +689,10 @@ router.post('/loans/:applicationId/approve', authenticateToken, async (req, res)
                 createdAt: new Date()
             });
         }
+
+        // Mark array as modified for Mongoose
+        user.markModified('loanApplications');
+        user.markModified('notifications');
 
         await user.save();
 
