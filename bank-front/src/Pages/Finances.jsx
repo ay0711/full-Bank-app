@@ -3,6 +3,7 @@ import PageLayout, { COLORS } from '../components/PageLayout';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../utils/api';
 
 const Finances = () => {
   const [stats, setStats] = useState({
@@ -23,11 +24,12 @@ const Finances = () => {
   const fetchFinanceData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('https://full-bank-app.onrender.com/api/user', {
+      const response = await axios.get(API_ENDPOINTS.DASHBOARD, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      const userData = response.data.user || {};
       setStats({
-        savings: response.data.savings || 50000,
+        savings: userData.accountBalance ?? 50000,
         activeLoan: response.data.loans || 10000,
         monthlyIncome: response.data.income || 150000,
         monthlyExpense: response.data.expense || 45000,

@@ -540,4 +540,89 @@ router.delete('/cards/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Repay loan
+router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const { applicationId } = req.params;
+
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ message: 'Valid repayment amount is required' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!user.loanApplications || user.loanApplications.length === 0) {
+            return res.status(404).json({ message: 'No loan applications found' });
+        }
+
+        const applicationIndex = user.loanApplications.findIndex(
+            app => app._id?.toString() === applicationId
+        );
+
+        if (applicationIndex === -1) {
+            return res.status(404).json({ message: 'Loan application not found' });
+        }
+
+        const application = user.loanApplications[applicationIndex];
+
+        if (application.status !== 'approved') {
+            return res.status(400).json({ message: 'Only approved loans can be repaid' });
+        }
+
+        if (user.accountBalance < amount) {
+            return res.status(400).json({ message: 'Insufficient balance for repayment' });
+        }
+
+        // Initialize repayments array if not exists
+        if (!application.repayments) {
+            application.repayments = [];
+        }
+
+        // Deduct amount from account
+        user.accountBalance -= amount;
+
+        // Record repayment
+        const repayment = {
+            amount: Number(amount),
+            date: new Date(),
+            remainingBalance: Math.max(0, application.amount - (application.totalRepaid || 0) - amount)
+        };
+
+        application.repayments.push(repayment);
+        application.totalRepaid = (application.totalRepaid || 0) + amount;
+
+        // Update status if fully repaid
+        if (application.totalRepaid >= application.amount) {
+            application.status = 'repaid';
+        } else if (!application.status.includes('partial')) {
+            application.status = 'partial-repayment';
+        }
+
+        // Record transaction if transactions array exists
+        if (!user.transactions) user.transactions = [];
+        user.transactions.push({
+            type: 'Loan Repayment',
+            amount: amount,
+            date: new Date(),
+            description: `Repayment for ${application.loanName} loan`,
+            status: 'completed'
+        });
+
+        await user.save();
+
+        res.status(200).json({
+            message: 'Loan repayment processed successfully',
+            application,
+            newBalance: user.accountBalance
+        });
+    } catch (error) {
+        console.error('Loan repayment error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 module.exports = router;

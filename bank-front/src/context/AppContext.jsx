@@ -80,27 +80,30 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateSettings = (newSettings) => {
+    const prevThemePreference = settings.themePreference;
     setSettings(newSettings);
     localStorage.setItem('appSettings', JSON.stringify(newSettings));
-    
-    // Apply theme changes immediately
-    if (newSettings.themePreference === 'Dark') {
-      setIsDarkMode(true);
-      document.body.classList.add('dark-mode');
-      localStorage.setItem('theme', 'dark');
-    } else if (newSettings.themePreference === 'Light') {
-      setIsDarkMode(false);
-      document.body.classList.remove('dark-mode');
-      localStorage.setItem('theme', 'light');
-    } else if (newSettings.themePreference === 'Auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(prefersDark);
-      if (prefersDark) {
+
+    // Apply theme changes only when the preference changes
+    if (newSettings.themePreference !== prevThemePreference) {
+      if (newSettings.themePreference === 'Dark') {
+        setIsDarkMode(true);
         document.body.classList.add('dark-mode');
-      } else {
+        localStorage.setItem('theme', 'dark');
+      } else if (newSettings.themePreference === 'Light') {
+        setIsDarkMode(false);
         document.body.classList.remove('dark-mode');
+        localStorage.setItem('theme', 'light');
+      } else if (newSettings.themePreference === 'Auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setIsDarkMode(prefersDark);
+        if (prefersDark) {
+          document.body.classList.add('dark-mode');
+        } else {
+          document.body.classList.remove('dark-mode');
+        }
+        localStorage.setItem('theme', prefersDark ? 'dark' : 'light');
       }
-      localStorage.setItem('theme', prefersDark ? 'dark' : 'light');
     }
   };
 

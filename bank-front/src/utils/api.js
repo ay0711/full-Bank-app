@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
   WITHDRAW: `${API_URL}/api/banking/withdraw`,
   LOANS: `${API_URL}/api/banking/loans`,
   LOAN_APPLY: `${API_URL}/api/banking/loans/apply`,
+  LOAN_REPAY: (applicationId) => `${API_URL}/api/banking/loans/${applicationId}/repay`,
   CARDS: `${API_URL}/api/banking/cards`,
   CARDS_REQUEST: `${API_URL}/api/banking/cards/request`,
   CARDS_BLOCK: (cardId) => `${API_URL}/api/banking/cards/${cardId}/block`,

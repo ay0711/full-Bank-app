@@ -14,11 +14,24 @@ const Loans = () => {
   const [applyReason, setApplyReason] = useState('');
   const [applyMessage, setApplyMessage] = useState('');
   const [applyLoading, setApplyLoading] = useState(false);
-  const { isDarkMode } = useAppContext();
+  const [loanApplications, setLoanApplications] = useState([]);
+  const [showRepayModal, setShowRepayModal] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [repayAmount, setRepayAmount] = useState('');
+  const [repayMessage, setRepayMessage] = useState('');
+  const [repayLoading, setRepayLoading] = useState(false);
+  const { isDarkMode, user } = useAppContext();
 
   useEffect(() => {
     fetchLoans();
+    fetchLoanApplications();
   }, []);
+
+  const fetchLoanApplications = () => {
+    if (user?.loanApplications) {
+      setLoanApplications(user.loanApplications);
+    }
+  };
 
   const fetchLoans = async () => {
     setLoading(true);
@@ -83,11 +96,65 @@ const Loans = () => {
       setApplyMessage('Loan application submitted successfully');
       setTimeout(() => {
         setShowApplyModal(false);
+        fetchLoanApplications();
       }, 1200);
     } catch (error) {
       setApplyMessage('Failed to submit loan application');
     } finally {
       setApplyLoading(false);
+    }
+  };
+
+  const openRepayModal = (application) => {
+    const remainingBalance = application.amount - (application.totalRepaid || 0);
+    setSelectedApplication(application);
+    setRepayAmount(Math.min(remainingBalance, 10000).toString()); // Default to 10k or remaining
+    setRepayMessage('');
+    setShowRepayModal(true);
+  };
+
+  const submitRepayment = async (e) => {
+    e.preventDefault();
+    if (!selectedApplication) return;
+
+    const repayValue = Number(repayAmount);
+    const remainingBalance = selectedApplication.amount - (selectedApplication.totalRepaid || 0);
+
+    if (!repayValue || repayValue <= 0) {
+      setRepayMessage('Repayment amount must be greater than 0');
+      return;
+    }
+
+    if (repayValue > remainingBalance) {
+      setRepayMessage(`Repayment cannot exceed remaining balance: ${formatCurrency(remainingBalance)}`);
+      return;
+    }
+
+    setRepayLoading(true);
+    setRepayMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        API_ENDPOINTS.LOAN_REPAY(selectedApplication._id),
+        { amount: repayValue },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setRepayMessage('Repayment processed successfully');
+      setTimeout(() => {
+        setShowRepayModal(false);
+        // Update applications with new data
+        if (response.data.application) {
+          const updatedApplications = loanApplications.map(app =>
+            app._id === selectedApplication._id ? response.data.application : app
+          );
+          setLoanApplications(updatedApplications);
+        }
+      }, 1200);
+    } catch (error) {
+      setRepayMessage(error.response?.data?.message || 'Failed to process repayment');
+    } finally {
+      setRepayLoading(false);
     }
   };
 
@@ -176,6 +243,181 @@ const Loans = () => {
           ))
         )}
       </div>
+
+      {/* My Loan Applications */}
+      {loanApplications.length > 0 && (
+        <div className="mb-5">
+          <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+            My Applications
+          </h5>
+          <div className="row g-4">
+            {loanApplications.map((application) => {
+              const remainingBalance = application.amount - (application.totalRepaid || 0);
+              const progressPercent = application.totalRepaid ? (application.totalRepaid / application.amount) * 100 : 0;
+              const statusColor = 
+                application.status === 'approved' ? '#10B981' :
+                application.status === 'pending' ? '#F59E0B' :
+                application.status === 'repaid' ? '#8B5CF6' :
+                application.status?.includes('partial') ? '#3B82F6' :
+                '#EF4444';
+
+              return (
+                <div key={application._id} className="col-lg-6">
+                  <div
+                    style={{
+                      background: isDarkMode ? '#1F2937' : COLORS.card,
+                      borderRadius: '16px',
+                      padding: '24px',
+                      boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+                      border: isDarkMode ? '1px solid #374151' : 'none'
+                    }}
+                  >
+                    <div className="d-flex justify-content-between align-items-start mb-3">
+                      <h6 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                        {application.loanName}
+                      </h6>
+                      <span
+                        style={{
+                          background: statusColor,
+                          color: 'white',
+                          borderRadius: '20px',
+                          padding: '4px 12px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          textTransform: 'capitalize'
+                        }}
+                      >
+                        {application.status?.replace('-', ' ')}
+                      </span>
+                    </div>
+
+                    <div className="row g-3 mb-4">
+                      <div className="col-6">
+                        <div className="small" style={{ color: COLORS.lightText }}>Loan Amount</div>
+                        <div className="fw-semibold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                          {formatCurrency(application.amount)}
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <div className="small" style={{ color: COLORS.lightText }}>Interest Rate</div>
+                        <div className="fw-semibold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                          {application.interestRate}% p.a.
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <div className="small" style={{ color: COLORS.lightText }}>Duration</div>
+                        <div className="fw-semibold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                          {application.duration} months
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <div className="small" style={{ color: COLORS.lightText }}>Applied On</div>
+                        <div className="fw-semibold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                          {new Date(application.createdAt).toLocaleDateString('en-NG')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {application.status === 'approved' && (
+                      <>
+                        <div className="mb-3">
+                          <div className="small d-flex justify-content-between mb-2" style={{ color: COLORS.lightText }}>
+                            <span>Repayment Progress</span>
+                            <span>{formatCurrency(application.totalRepaid || 0)} / {formatCurrency(application.amount)}</span>
+                          </div>
+                          <div
+                            style={{
+                              background: isDarkMode ? '#374151' : '#E5E7EB',
+                              height: '8px',
+                              borderRadius: '4px',
+                              overflow: 'hidden'
+                            }}
+                          >
+                            <div
+                              style={{
+                                background: '#10B981',
+                                height: '100%',
+                                width: `${progressPercent}%`,
+                                transition: 'width 0.3s ease'
+                              }}
+                            />
+                          </div>
+                          <div className="small mt-2" style={{ color: COLORS.lightText }}>
+                            Remaining: {formatCurrency(remainingBalance)}
+                          </div>
+                        </div>
+
+                        {remainingBalance > 0 && (
+                          <button
+                            className="btn w-100 fw-semibold"
+                            style={{
+                              background: COLORS.primary,
+                              color: 'white',
+                              borderRadius: '12px',
+                              border: 'none',
+                              padding: '10px',
+                              fontSize: '0.9rem',
+                              transition: 'all 0.3s ease'
+                            }}
+                            onClick={() => openRepayModal(application)}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#3730A3';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = COLORS.primary;
+                            }}
+                          >
+                            Make Repayment
+                          </button>
+                        )}
+
+                        {remainingBalance <= 0 && (
+                          <div
+                            style={{
+                              background: '#D1FAE5',
+                              color: '#065F46',
+                              borderRadius: '12px',
+                              padding: '12px',
+                              textAlign: 'center',
+                              fontWeight: '500'
+                            }}
+                          >
+                            Loan fully repaid
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {application.status === 'pending' && (
+                      <div
+                        style={{
+                          background: '#FEF3C7',
+                          color: '#78350F',
+                          borderRadius: '12px',
+                          padding: '12px',
+                          textAlign: 'center',
+                          fontSize: '0.9rem'
+                        }}
+                      >
+                        Your application is under review
+                      </div>
+                    )}
+
+                    {application.reason && (
+                      <div className="mt-3 pt-3 border-top" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
+                        <div className="small" style={{ color: COLORS.lightText }}>Applied For</div>
+                        <div style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText, fontSize: '0.9rem' }}>
+                          {application.reason}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {showApplyModal && selectedLoan && (
         <div
@@ -365,6 +607,132 @@ const Loans = () => {
           ))}
         </div>
       </div>
+
+      {/* Repayment Modal */}
+      {showRepayModal && selectedApplication && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+          onClick={() => setShowRepayModal(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '28px',
+              width: '100%',
+              maxWidth: '520px',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                Repay {selectedApplication.loanName}
+              </h5>
+              <button
+                onClick={() => setShowRepayModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: isDarkMode ? '#9CA3AF' : COLORS.lightText }}
+              >
+                ×
+              </button>
+            </div>
+
+            {repayMessage && (
+              <div
+                style={{
+                  background: repayMessage.includes('successfully') ? COLORS.success : COLORS.danger,
+                  color: 'white',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  marginBottom: '16px'
+                }}
+              >
+                {repayMessage}
+              </div>
+            )}
+
+            <div className="mb-4 p-3" style={{ background: isDarkMode ? '#374151' : '#F3F4F6', borderRadius: '12px' }}>
+              <div className="row g-3 mb-3">
+                <div className="col-6">
+                  <div className="small" style={{ color: COLORS.lightText }}>Loan Amount</div>
+                  <div className="fw-semibold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                    {formatCurrency(selectedApplication.amount)}
+                  </div>
+                </div>
+                <div className="col-6">
+                  <div className="small" style={{ color: COLORS.lightText }}>Already Paid</div>
+                  <div className="fw-semibold" style={{ color: '#10B981' }}>
+                    {formatCurrency(selectedApplication.totalRepaid || 0)}
+                  </div>
+                </div>
+              </div>
+              <div className="small" style={{ color: COLORS.lightText }}>
+                Remaining Balance
+              </div>
+              <div className="fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText, fontSize: '1.25rem' }}>
+                {formatCurrency(selectedApplication.amount - (selectedApplication.totalRepaid || 0))}
+              </div>
+            </div>
+
+            <form onSubmit={submitRepayment}>
+              <div className="mb-4">
+                <label className="small fw-semibold mb-2" style={{ color: COLORS.lightText }}>
+                  Repayment Amount
+                </label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={repayAmount}
+                  onChange={(e) => setRepayAmount(e.target.value)}
+                  max={selectedApplication.amount - (selectedApplication.totalRepaid || 0)}
+                  min="1"
+                  required
+                  step="1000"
+                  style={{
+                    background: isDarkMode ? '#374151' : COLORS.light,
+                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                    borderRadius: '12px',
+                    color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                    padding: '12px 16px'
+                  }}
+                />
+                <div className="small mt-2" style={{ color: COLORS.lightText }}>
+                  Max: {formatCurrency(selectedApplication.amount - (selectedApplication.totalRepaid || 0))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="btn w-100 fw-semibold"
+                disabled={repayLoading}
+                style={{
+                  background: COLORS.primary,
+                  color: 'white',
+                  borderRadius: '12px',
+                  border: 'none',
+                  padding: '12px',
+                  opacity: repayLoading ? 0.6 : 1,
+                  cursor: repayLoading ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {repayLoading ? 'Processing...' : 'Confirm Repayment'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 };

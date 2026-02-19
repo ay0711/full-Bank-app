@@ -257,7 +257,7 @@ const Dashboard = () => {
     <div style={{ display: 'flex', minHeight: '100vh', background: isDarkMode ? '#111827' : '#F9FAFB' }}>
       {/* Sidebar */}
       <aside
-        className="d-none d-lg-flex flex-column py-5 px-0 app-sidebar"
+        className="d-none d-lg-flex flex-column py-3 px-0 app-sidebar"
         style={{
           width: 280,
           minHeight: '100vh',
@@ -268,7 +268,7 @@ const Dashboard = () => {
         }}
       >
         {/* Logo */}
-        <div className="d-flex align-items-center mb-5 px-4">
+        <div className="d-flex align-items-center mb-3 px-4">
           <img src={ayBankCircle} alt="BankDash" style={{ width: 42, height: 42, marginRight: 12, borderRadius: '10px' }} />
           <h5 className="mb-0 fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText, fontSize: '1.25rem' }}>
             BankDash
@@ -295,13 +295,13 @@ const Dashboard = () => {
             return (
               <button
                 key={item.path}
-                className="btn w-100 text-start d-flex align-items-center gap-3 px-4 py-3 rounded-2 mb-2"
+                className="btn w-100 text-start d-flex align-items-center gap-3 px-3 py-2 rounded-2 mb-1"
                 onClick={() => navigate(item.path)}
                 style={{
                   background: isActive ? COLORS.primary : 'transparent',
                   color: isActive ? 'white' : isDarkMode ? '#9CA3AF' : COLORS.lightText,
                   border: 'none',
-                  fontSize: '0.95rem',
+                  fontSize: '0.85rem',
                   fontWeight: isActive ? 600 : 400,
                   transition: 'all 0.3s ease',
                   cursor: 'pointer'
@@ -327,13 +327,13 @@ const Dashboard = () => {
         {/* Settings & Logout */}
         <div className="px-3 border-top" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB', paddingTop: '1.5rem' }}>
           <button
-            className="btn w-100 text-start d-flex align-items-center gap-3 px-4 py-3 rounded-2 mb-2"
+            className="btn w-100 text-start d-flex align-items-center gap-3 px-3 py-2 rounded-2 mb-1"
             onClick={toggleTheme}
             style={{
               background: 'transparent',
               color: isDarkMode ? '#9CA3AF' : COLORS.lightText,
               border: 'none',
-              fontSize: '0.95rem',
+              fontSize: '0.85rem',
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
@@ -347,13 +347,13 @@ const Dashboard = () => {
             <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
           </button>
           <button
-            className="btn w-100 text-start d-flex align-items-center gap-3 px-4 py-3 rounded-2"
+            className="btn w-100 text-start d-flex align-items-center gap-3 px-3 py-2 rounded-2"
             onClick={() => { logout(); navigate('/signin'); }}
             style={{
               background: 'transparent',
               color: isDarkMode ? '#9CA3AF' : COLORS.lightText,
               border: 'none',
-              fontSize: '0.95rem',
+              fontSize: '0.85rem',
               transition: 'all 0.3s ease'
             }}
             onMouseEnter={(e) => {
