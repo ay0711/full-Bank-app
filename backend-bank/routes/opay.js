@@ -37,18 +37,58 @@ router.post('/airtime', authenticateToken, async (req, res) => {
   // Simulate airtime purchase and add transaction
   const user = await User.findById(req.user._id);
   const { amount, phone } = req.body;
-  user.transactions.push({ type: 'debit', amount, description: `Airtime for ${phone}` });
+  user.transactions.push({
+    type: 'debit',
+    amount,
+    description: `Airtime for ${phone}`,
+    date: new Date()
+  });
   await user.save();
   res.json({ message: 'Airtime purchased', amount, phone });
+});
+
+router.get('/airtime', authenticateToken, async (req, res) => {
+  const user = await User.findById(req.user._id).select('transactions');
+  const history = (user.transactions || [])
+    .filter(tx => tx.type === 'debit' && typeof tx.description === 'string' && tx.description.startsWith('Airtime for '))
+    .map(tx => ({
+      type: 'airtime',
+      amount: tx.amount,
+      phone: tx.description.replace('Airtime for ', ''),
+      date: tx.date || tx.createdAt || new Date().toISOString()
+    }))
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  res.json({ history });
 });
 
 router.post('/data', authenticateToken, async (req, res) => {
   // Simulate data purchase and add transaction
   const user = await User.findById(req.user._id);
   const { amount, phone } = req.body;
-  user.transactions.push({ type: 'debit', amount, description: `Data for ${phone}` });
+  user.transactions.push({
+    type: 'debit',
+    amount,
+    description: `Data for ${phone}`,
+    date: new Date()
+  });
   await user.save();
   res.json({ message: 'Data purchased', amount, phone });
+});
+
+router.get('/data', authenticateToken, async (req, res) => {
+  const user = await User.findById(req.user._id).select('transactions');
+  const history = (user.transactions || [])
+    .filter(tx => tx.type === 'debit' && typeof tx.description === 'string' && tx.description.startsWith('Data for '))
+    .map(tx => ({
+      type: 'data',
+      amount: tx.amount,
+      phone: tx.description.replace('Data for ', ''),
+      date: tx.date || tx.createdAt || new Date().toISOString()
+    }))
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  res.json({ history });
 });
 
 // Fingerprint endpoints
