@@ -20,12 +20,14 @@ const Loans = () => {
   const [repayAmount, setRepayAmount] = useState('');
   const [repayMessage, setRepayMessage] = useState('');
   const [repayLoading, setRepayLoading] = useState(false);
-  const { isDarkMode, user } = useAppContext();
+  const { isDarkMode, user, setUser } = useAppContext();
 
   useEffect(() => {
     fetchLoans();
-    fetchLoanApplications();
-  }, []);
+    if (user?.loanApplications) {
+      setLoanApplications(user.loanApplications);
+    }
+  }, [user]);
 
   const fetchLoanApplications = () => {
     if (user?.loanApplications) {
@@ -94,9 +96,20 @@ const Loans = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setApplyMessage('Loan application submitted successfully');
-      setTimeout(() => {
+      setTimeout(async () => {
         setShowApplyModal(false);
-        fetchLoanApplications();
+        // Refresh user data to get updated loanApplications
+        try {
+          const token = localStorage.getItem('token');
+          const response = await axios.get(API_ENDPOINTS.DASHBOARD, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (response.data.user) {
+            setUser(response.data.user);
+          }
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
+        }
       }, 1200);
     } catch (error) {
       setApplyMessage('Failed to submit loan application');
@@ -141,14 +154,19 @@ const Loans = () => {
       );
 
       setRepayMessage('Repayment processed successfully');
-      setTimeout(() => {
+      setTimeout(async () => {
         setShowRepayModal(false);
-        // Update applications with new data
-        if (response.data.application) {
-          const updatedApplications = loanApplications.map(app =>
-            app._id === selectedApplication._id ? response.data.application : app
-          );
-          setLoanApplications(updatedApplications);
+        // Refresh user data to get updated loanApplications and balance
+        try {
+          const token = localStorage.getItem('token');
+          const response = await axios.get(API_ENDPOINTS.DASHBOARD, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (response.data.user) {
+            setUser(response.data.user);
+          }
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
         }
       }, 1200);
     } catch (error) {

@@ -16,7 +16,14 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
                 email: user.email,
                 accountNumber: user.accountNumber,
                 accountBalance: user.accountBalance,
-                transactions: user.transactions
+                accountType: user.accountType,
+                transactions: user.transactions,
+                cards: user.cards,
+                loanApplications: user.loanApplications,
+                airtimeHistory: user.airtimeHistory,
+                dataHistory: user.dataHistory,
+                notifications: user.notifications,
+                settings: user.settings
             }
         });
     } catch (error) {
