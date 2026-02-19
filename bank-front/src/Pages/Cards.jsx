@@ -4,12 +4,10 @@ import { useAppContext } from '../context/AppContext';
 import ConfirmModal from '../components/ConfirmModal';
 import { formatCurrency } from '../utils/currencyConverter';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../utils/api';
 
 const Cards = () => {
-  const [cards, setCards] = useState([
-    { id: 1, type: 'Virtual', last4: '1234', balance: 500000, status: 'Active', issuer: 'Mastercard', expiry: '12/26', color: '#4F46E5' },
-    { id: 2, type: 'Physical', last4: '5678', balance: 0, status: 'Active', issuer: 'Visa', expiry: '08/25', color: '#1434CB' }
-  ]);
+  const [cards, setCards] = useState([]);
 
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [cardType, setCardType] = useState('virtual');
@@ -28,12 +26,10 @@ const Cards = () => {
   const fetchCards = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('https://full-bank-app.onrender.com/api/banking/cards', {
+      const response = await axios.get(API_ENDPOINTS.CARDS, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (response.data.cards && response.data.cards.length > 0) {
-        setCards(response.data.cards);
-      }
+      setCards(response.data.cards || []);
     } catch (error) {
       console.error('Error fetching cards:', error);
     }
@@ -43,7 +39,7 @@ const Cards = () => {
     if (cardType) {
       try {
         const token = localStorage.getItem('token');
-        await axios.post('https://full-bank-app.onrender.com/api/banking/cards/request', { type: cardType }, {
+        await axios.post(API_ENDPOINTS.CARDS_REQUEST, { type: cardType }, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setMessage(`${cardType === 'virtual' ? 'Virtual' : 'Physical'} card request submitted successfully!`);
@@ -60,11 +56,11 @@ const Cards = () => {
   const handleBlockCard = async (cardId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`https://full-bank-app.onrender.com/api/banking/cards/${cardId}/block`, {}, {
+      await axios.patch(API_ENDPOINTS.CARDS_BLOCK(cardId), {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCards(cards.map(card =>
-        card.id === cardId ? { ...card, status: 'Blocked' } : card
+        card._id === cardId ? { ...card, status: 'Blocked' } : card
       ));
       setMessage('Card blocked successfully');
       setTimeout(() => setMessage(''), 3000);
@@ -77,11 +73,11 @@ const Cards = () => {
   const handleUnblockCard = async (cardId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`https://full-bank-app.onrender.com/api/banking/cards/${cardId}/unblock`, {}, {
+      await axios.patch(API_ENDPOINTS.CARDS_UNBLOCK(cardId), {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCards(cards.map(card =>
-        card.id === cardId ? { ...card, status: 'Active' } : card
+        card._id === cardId ? { ...card, status: 'Active' } : card
       ));
       setMessage('Card unblocked successfully');
       setTimeout(() => setMessage(''), 3000);
@@ -100,10 +96,10 @@ const Cards = () => {
     if (cardToDelete) {
       try {
         const token = localStorage.getItem('token');
-        await axios.delete(`https://full-bank-app.onrender.com/api/banking/cards/${cardToDelete}`, {
+        await axios.delete(API_ENDPOINTS.CARDS_DELETE(cardToDelete), {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setCards(cards.filter(card => card.id !== cardToDelete));
+        setCards(cards.filter(card => card._id !== cardToDelete));
         setCardToDelete(null);
         setMessage('Card deleted successfully');
         setTimeout(() => setMessage(''), 3000);
