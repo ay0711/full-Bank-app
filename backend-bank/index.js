@@ -20,11 +20,13 @@ const jwt = require('jsonwebtoken');
 const authRoutes = require('./routes/auth');
 const bankingRoutes = require('./routes/banking');
 const opayRoutes = require('./routes/opay');
+const billsRoutes = require('./routes/bills');
 
 
 app.use('/api/auth', authRoutes);
 app.use('/api/banking', bankingRoutes);
 app.use('/api/opay', opayRoutes);
+app.use('/api/bills', billsRoutes);
 
 mongoose.connect(mongoURI)
     .then(() => {

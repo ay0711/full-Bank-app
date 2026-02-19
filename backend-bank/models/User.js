@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    accountType: {
+        type: String,
+        enum: ['Standard', 'Premium', 'Business'],
+        default: 'Standard'
+    },
     profileImage: {
         type: String,
         default: ''
@@ -87,12 +92,24 @@ const userSchema = new mongoose.Schema({
         recipientAccountNumber: String,
         senderAccountNumber: String
     }],
-        cards: [{
-            type: { type: String, enum: ['virtual', 'physical'], required: true },
-            last4: { type: String, required: true },
-            status: { type: String, enum: ['active', 'blocked'], default: 'active' },
-            createdAt: { type: Date, default: Date.now }
-        }],
+    savings: [{
+        name: { type: String, required: true },
+        goal: { type: Number, required: true },
+        current: { type: Number, default: 0 },
+        dueDate: { type: Date },
+        category: { type: String, default: 'Personal' },
+        createdAt: { type: Date, default: Date.now }
+    }],
+    cards: [{
+        type: { type: String, enum: ['Virtual', 'Physical'], required: true },
+        last4: { type: String, required: true },
+        balance: { type: Number, default: 0 },
+        status: { type: String, enum: ['Active', 'Blocked'], default: 'Active' },
+        issuer: { type: String, default: 'Mastercard' },
+        expiry: { type: String, required: true },
+        color: { type: String, default: '#4F46E5' },
+        createdAt: { type: Date, default: Date.now }
+    }],
         notifications: [{
             message: String,
             read: { type: Boolean, default: false },

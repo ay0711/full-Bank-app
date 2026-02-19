@@ -161,7 +161,19 @@ router.put('/profile-image', authenticateToken, async (req, res) => {
         if (!user) return res.status(404).json({ message: 'User not found' });
         user.profileImage = image;
         await user.save();
-        res.json({ message: 'Profile image updated', profileImage: user.profileImage });
+        res.json({ 
+            message: 'Profile image updated', 
+            user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                accountNumber: user.accountNumber,
+                accountBalance: user.accountBalance,
+                accountType: user.accountType,
+                profileImage: user.profileImage
+            }
+        });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
     }
@@ -188,8 +200,15 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendWelcomeEmail } = require('../utils/emailService');
 
+// Store OTPs temporarily (in production, use Redis or database)
+const otpStore = new Map();
+
 const generateAccountNumber = () => {
     return Math.floor(1000000000 + Math.random() * 9000000000).toString();
+};
+
+const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 const generateRandomBalance = () => {
@@ -312,6 +331,250 @@ router.post('/signin', async (req, res) => {
             }
         });
 
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Lookup user by account number
+router.get('/user/:accountNumber', authenticateToken, async (req, res) => {
+    try {
+        const { accountNumber } = req.params;
+        
+        if (!accountNumber || accountNumber.length !== 10) {
+            return res.status(400).json({ message: 'Invalid account number' });
+        }
+
+        const user = await User.findOne({ accountNumber });
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
+            user: {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                accountNumber: user.accountNumber
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Get list of users (for quick transfer, limit to 10)
+router.get('/users', authenticateToken, async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+        const users = await User.find({ _id: { $ne: req.user._id } })
+            .select('firstName lastName accountNumber accountType')
+            .limit(limit);
+        
+        res.json({ users });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Upgrade account type
+router.post('/upgrade-account', authenticateToken, async (req, res) => {
+    try {
+        const { accountType } = req.body;
+        
+        if (!['Standard', 'Premium', 'Business'].includes(accountType)) {
+            return res.status(400).json({ message: 'Invalid account type' });
+        }
+        
+        const user = await User.findById(req.user._id);
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Check if already on this tier or higher
+        const tierHierarchy = { 'Standard': 0, 'Premium': 1, 'Business': 2 };
+        const currentTier = tierHierarchy[user.accountType || 'Standard'];
+        const requestedTier = tierHierarchy[accountType];
+        
+        if (requestedTier <= currentTier) {
+            return res.status(400).json({ 
+                message: 'You are already on this tier or higher' 
+            });
+        }
+        
+        // Define upgrade costs
+        const upgradeCosts = {
+            'Premium': 4999,   // From Standard to Premium
+            'Business': 9999   // From Standard/Premium to Business
+        };
+        
+        let upgradeCost = 0;
+        if (accountType === 'Premium' && user.accountType === 'Standard') {
+            upgradeCost = upgradeCosts.Premium;
+        } else if (accountType === 'Business') {
+            // If upgrading from Standard to Business, charge Business price
+            // If upgrading from Premium to Business, charge difference
+            if (user.accountType === 'Standard') {
+                upgradeCost = upgradeCosts.Business;
+            } else if (user.accountType === 'Premium') {
+                upgradeCost = upgradeCosts.Business - upgradeCosts.Premium; // 5000
+            }
+        }
+        
+        // Check if user has sufficient balance
+        if (upgradeCost > 0 && user.accountBalance < upgradeCost) {
+            return res.status(400).json({ 
+                message: `Insufficient balance. ₦${upgradeCost.toLocaleString('en-NG')} required for upgrade.`,
+                required: upgradeCost,
+                current: user.accountBalance
+            });
+        }
+        
+        // Deduct upgrade cost and update account type
+        if (upgradeCost > 0) {
+            user.accountBalance -= upgradeCost;
+            
+            // Add transaction record
+            user.transactions.push({
+                type: 'debit',
+                amount: upgradeCost,
+                description: `Account upgrade to ${accountType}`,
+                date: new Date()
+            });
+        }
+        
+        user.accountType = accountType;
+        await user.save();
+        
+        res.json({ 
+            message: `Account upgraded successfully to ${accountType}!`,
+            upgradeCost,
+            user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                accountNumber: user.accountNumber,
+                accountBalance: user.accountBalance,
+                accountType: user.accountType,
+                profileImage: user.profileImage
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Forgot password - send OTP
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+        
+        // Check if user exists
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'No account found with this email' });
+        }
+        
+        // Generate OTP
+        const otp = generateOTP();
+        
+        // Store OTP with 10 minute expiry
+        otpStore.set(email, {
+            otp,
+            expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+        });
+        
+        // In production, send OTP via email
+        // For now, log it (REMOVE IN PRODUCTION)
+        console.log(`OTP for ${email}: ${otp}`);
+        
+        res.json({ 
+            message: 'OTP sent to your email',
+            // REMOVE IN PRODUCTION - only for testing
+            otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Verify OTP
+router.post('/verify-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Email and OTP are required' });
+        }
+        
+        // Check if OTP exists
+        const storedOTP = otpStore.get(email);
+        if (!storedOTP) {
+            return res.status(400).json({ message: 'No OTP found. Please request a new one' });
+        }
+        
+        // Check if OTP expired
+        if (Date.now() > storedOTP.expiresAt) {
+            otpStore.delete(email);
+            return res.status(400).json({ message: 'OTP expired. Please request a new one' });
+        }
+        
+        // Verify OTP
+        if (storedOTP.otp !== otp) {
+            return res.status(400).json({ message: 'Invalid OTP' });
+        }
+        
+        // Mark OTP as verified
+        otpStore.set(email, {
+            ...storedOTP,
+            verified: true
+        });
+        
+        res.json({ message: 'OTP verified successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Reset password
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email and password are required' });
+        }
+        
+        // Check if OTP was verified
+        const storedOTP = otpStore.get(email);
+        if (!storedOTP || !storedOTP.verified) {
+            return res.status(400).json({ message: 'Please verify OTP first' });
+        }
+        
+        // Find user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Hash new password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        
+        // Update password
+        user.password = hashedPassword;
+        await user.save();
+        
+        // Clear OTP
+        otpStore.delete(email);
+        
+        res.json({ message: 'Password reset successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Internal server error' });
     }
