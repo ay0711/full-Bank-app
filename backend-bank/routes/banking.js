@@ -521,7 +521,12 @@ router.delete('/cards/:id', authenticateToken, async (req, res) => {
         }
 
         const beforeCount = user.cards.length;
-        user.cards = user.cards.filter(card => card._id?.toString() !== req.params.id);
+        const idParam = req.params.id;
+        user.cards = user.cards.filter(card => {
+            const idMatch = card._id?.toString() === idParam;
+            const last4Match = card.last4 === idParam;
+            return !idMatch && !last4Match;
+        });
 
         if (user.cards.length === beforeCount) {
             return res.status(404).json({ message: 'Card not found' });
