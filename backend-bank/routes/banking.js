@@ -30,6 +30,14 @@ router.post('/transfer', authenticateToken, async (req, res) => {
         const { recipientAccountNumber, amount, description } = req.body;
         const senderId = req.user._id;
 
+        // Log request for debugging
+        console.log('Transfer request:', { recipientAccountNumber, amount, description, senderId });
+
+        // Validate required fields
+        if (!recipientAccountNumber || !amount) {
+            return res.status(400).json({ message: 'Recipient account number and amount are required' });
+        }
+
         // Validate amount
         if (amount <= 0) {
             return res.status(400).json({ message: 'Transfer amount must be greater than 0' });
@@ -148,7 +156,11 @@ router.post('/transfer', authenticateToken, async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('Transfer error:', error);
+        res.status(500).json({ 
+            message: 'Internal server error',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 

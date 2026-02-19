@@ -101,12 +101,12 @@ const userSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now }
     }],
     cards: [{
-        type: { type: String, enum: ['Virtual', 'Physical'], required: true },
+        type: { type: String, enum: ['Virtual', 'Physical', 'virtual', 'physical'], required: true },
         last4: { type: String, required: true },
         balance: { type: Number, default: 0 },
-        status: { type: String, enum: ['Active', 'Blocked'], default: 'Active' },
+        status: { type: String, enum: ['Active', 'Blocked', 'active', 'blocked'], default: 'Active' },
         issuer: { type: String, default: 'Mastercard' },
-        expiry: { type: String, required: true },
+        expiry: { type: String },
         color: { type: String, default: '#4F46E5' },
         createdAt: { type: Date, default: Date.now }
     }],
