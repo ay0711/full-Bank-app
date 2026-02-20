@@ -616,8 +616,9 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
 
         const application = user.loanApplications[applicationIndex];
 
-        if (application.status !== 'approved') {
-            return res.status(400).json({ message: 'Only approved loans can be repaid' });
+        // Allow repayment for approved and partially repaid loans
+        if (application.status !== 'approved' && application.status !== 'partial-repayment') {
+            return res.status(400).json({ message: 'Only approved or partially repaid loans can be repaid' });
         }
 
         if (user.accountBalance < amount) {
