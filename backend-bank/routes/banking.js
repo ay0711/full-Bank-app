@@ -144,6 +144,25 @@ router.post('/transfer', authenticateToken, async (req, res) => {
         sender.transactions.push(senderTransaction);
         recipient.transactions.push(recipientTransaction);
 
+        // Add notifications for both users
+        if (!sender.notifications) sender.notifications = [];
+        if (!recipient.notifications) recipient.notifications = [];
+        
+        sender.notifications.push({
+            message: `Transfer of ₦${amount.toLocaleString('en-NG')} sent to ${recipient.firstName} ${recipient.lastName}`,
+            read: false,
+            createdAt: new Date()
+        });
+
+        recipient.notifications.push({
+            message: `Received ₦${amount.toLocaleString('en-NG')} from ${sender.firstName} ${sender.lastName}`,
+            read: false,
+            createdAt: new Date()
+        });
+
+        sender.markModified('notifications');
+        recipient.markModified('notifications');
+
         // Save both users
         await sender.save();
         await recipient.save();
@@ -290,6 +309,15 @@ router.post('/fund', authenticateToken, async (req, res) => {
             description: `Account funded via ${paymentMethod}`,
             date: new Date()
         });
+
+        // Add notification
+        if (!user.notifications) user.notifications = [];
+        user.notifications.push({
+            message: `Account funded with ₦${amount.toLocaleString('en-NG')} via ${paymentMethod}`,
+            read: false,
+            createdAt: new Date()
+        });
+        user.markModified('notifications');
         
         await user.save();
         
@@ -337,6 +365,15 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
             description: `Withdrawal via ${withdrawalType || 'ATM'}`,
             date: new Date()
         });
+
+        // Add notification
+        if (!user.notifications) user.notifications = [];
+        user.notifications.push({
+            message: `Withdrawn ₦${amount.toLocaleString('en-NG')} via ${withdrawalType || 'ATM'}`,
+            read: false,
+            createdAt: new Date()
+        });
+        user.markModified('notifications');
         
         await user.save();
         
@@ -623,6 +660,16 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
             description: `Repayment for ${application.loanName} loan`,
             status: 'completed'
         });
+
+        // Add notification
+        if (!user.notifications) user.notifications = [];
+        const statusMsg = application.status === 'repaid' ? 'fully repaid' : 'partial payment made';
+        user.notifications.push({
+            message: `Loan repayment of ₦${amount.toLocaleString('en-NG')} processed for ${application.loanName} (${statusMsg})`,
+            read: false,
+            createdAt: new Date()
+        });
+        user.markModified('notifications');
 
         await user.save();
 
