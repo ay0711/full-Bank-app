@@ -2,6 +2,8 @@ const express = require('express')
 const app = express ()
 require('dotenv').config()
 const cors = require('cors')
+const { jsonContentType, notFoundHandler, errorHandler } = require('./middleware/errorHandler');
+
 app.use(cors({
     origin: [
         'https://full-bank-app.vercel.app',
@@ -14,6 +16,8 @@ const mongoURI = process.env.MONGO_URI
 const port = process.env.PORT || 5555
 const mongoose = require('mongoose')
 app.use(express.json());
+// Ensure all responses have JSON content type
+app.use(jsonContentType);
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -49,6 +53,12 @@ app.get('/api/auth/health', (req, res) => {
         uptime: process.uptime()
     });
 });
+
+// Handle 404 - Not Found
+app.use(notFoundHandler);
+
+// Handle all other errors
+app.use(errorHandler);
 
 app.listen(port, ()=>{
     console.log(`Server running on port ${port}`);
