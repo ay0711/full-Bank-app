@@ -588,10 +588,12 @@ router.delete('/cards/:id', authenticateToken, async (req, res) => {
 // Repay loan
 router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) => {
     try {
-        const { amount } = req.body;
+        let { amount } = req.body;
         const { applicationId } = req.params;
 
-        if (!amount || amount <= 0) {
+        // Convert amount to number and validate
+        amount = Number(amount);
+        if (!amount || isNaN(amount) || amount <= 0) {
             return res.status(400).json({ message: 'Valid repayment amount is required' });
         }
 
@@ -632,7 +634,7 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
 
         // Record repayment
         const repayment = {
-            amount: Number(amount),
+            amount: amount,
             date: new Date(),
             remainingBalance: Math.max(0, application.amount - (application.totalRepaid || 0) - amount)
         };
@@ -663,13 +665,19 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
 
         // Add notification
         if (!user.notifications) user.notifications = [];
-        const statusMsg = application.status === 'repaid' ? 'fully repaid' : 'partial payment made';
-        user.notifications.push({
-            message: `Loan repayment of ₦${amount.toLocaleString('en-NG')} processed for ${application.loanName} (${statusMsg})`,
-            read: false,
-            createdAt: new Date()
-        });
-        user.markModified('notifications');
+        try {
+            const statusMsg = application.status === 'repaid' ? 'fully repaid' : 'partial payment made';
+            const formattedAmount = typeof amount === 'number' ? amount.toLocaleString('en-NG') : amount;
+            user.notifications.push({
+                message: `Loan repayment of ₦${formattedAmount} processed for ${application.loanName} (${statusMsg})`,
+                read: false,
+                createdAt: new Date()
+            });
+            user.markModified('notifications');
+        } catch (notifError) {
+            console.warn('Notification error:', notifError);
+            // Continue saving even if notification fails
+        }
 
         await user.save();
 
@@ -680,7 +688,11 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
         });
     } catch (error) {
         console.error('Loan repayment error:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            message: 'Internal server error',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 

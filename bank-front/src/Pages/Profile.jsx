@@ -229,7 +229,19 @@ const Profile = () => {
                   Phone Number
                 </p>
                 <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
-                  {user?.phoneNumber || 'Not provided'}
+                  {user?.phoneNumber && user.phoneVerified ? (
+                    <span>
+                      {user.phoneNumber}
+                      <i className="fas fa-check-circle" style={{ color: COLORS.success, marginLeft: '8px' }}></i>
+                    </span>
+                  ) : user?.phoneNumber ? (
+                    <span>
+                      {user.phoneNumber}
+                      <span style={{ color: COLORS.warning, fontSize: '0.875rem', marginLeft: '8px' }}>(Unverified)</span>
+                    </span>
+                  ) : (
+                    'Not provided'
+                  )}
                 </p>
               </div>
               <div className="col-md-6">

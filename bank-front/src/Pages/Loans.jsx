@@ -131,10 +131,17 @@ const Loans = () => {
     e.preventDefault();
     if (!selectedApplication) return;
 
-    const repayValue = Number(repayAmount);
+    // Convert and validate the repayment amount
+    let repayValue = repayAmount.trim();
+    if (!repayValue || isNaN(Number(repayValue))) {
+      setRepayMessage('Please enter a valid amount');
+      return;
+    }
+
+    repayValue = Number(repayValue);
     const remainingBalance = selectedApplication.amount - (selectedApplication.totalRepaid || 0);
 
-    if (!repayValue || repayValue <= 0) {
+    if (repayValue <= 0) {
       setRepayMessage('Repayment amount must be greater than 0');
       return;
     }
@@ -148,6 +155,7 @@ const Loans = () => {
     setRepayMessage('');
     try {
       const token = localStorage.getItem('token');
+      console.log('Submitting repayment:', { amount: repayValue, applicationId: selectedApplication._id });
       const response = await axios.post(
         API_ENDPOINTS.LOAN_REPAY(selectedApplication._id),
         { amount: repayValue },
@@ -171,7 +179,9 @@ const Loans = () => {
         }
       }, 1200);
     } catch (error) {
-      setRepayMessage(error.response?.data?.message || 'Failed to process repayment');
+      console.error('Repayment error:', error);
+      console.error('Error response:', error.response?.data);
+      setRepayMessage(error.response?.data?.message || error.message || 'Failed to process repayment');
     } finally {
       setRepayLoading(false);
     }
@@ -752,14 +762,20 @@ const Loans = () => {
                   Repayment Amount
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="form-control"
                   value={repayAmount}
-                  onChange={(e) => setRepayAmount(e.target.value)}
-                  max={selectedApplication.amount - (selectedApplication.totalRepaid || 0)}
-                  min="1"
-                  required
-                  step="1000"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Allow any amount: numbers and decimals only
+                    const cleaned = val.replace(/[^0-9.]/g, '');
+                    // Prevent multiple decimal points
+                    const parts = cleaned.split('.');
+                    const finalVal = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+                    setRepayAmount(finalVal);
+                  }}
+                  placeholder="Enter amount"
                   style={{
                     background: isDarkMode ? '#374151' : COLORS.light,
                     border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',

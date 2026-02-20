@@ -28,20 +28,46 @@ const Finances = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       const userData = response.data.user || {};
+      
+      // Calculate total loan amount from loan applications
+      const totalLoanAmount = userData.loanApplications?.reduce((sum, loan) => {
+        return loan.status === 'approved' ? sum + (loan.amount - (loan.totalRepaid || 0)) : sum;
+      }, 0) || 0;
+      
+      // Calculate monthly expense from transactions
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      thisMonth.setHours(0, 0, 0, 0);
+      const monthlyExpense = userData.transactions?.filter(tx => {
+        const txDate = new Date(tx.date);
+        return tx.type === 'debit' && txDate >= thisMonth;
+      }).reduce((sum, tx) => sum + tx.amount, 0) || 0;
+      
+      // Calculate monthly income from transactions
+      const monthlyIncome = userData.transactions?.filter(tx => {
+        const txDate = new Date(tx.date);
+        return tx.type === 'credit' && txDate >= thisMonth;
+      }).reduce((sum, tx) => sum + tx.amount, 0) || 0;
+      
+      // Calculate total savings
+      const totalSavings = userData.savings?.reduce((sum, saving) => sum + saving.current, 0) || 0;
+      
       setStats({
-        savings: userData.accountBalance ?? 50000,
-        activeLoan: response.data.loans || 10000,
-        monthlyIncome: response.data.income || 150000,
-        monthlyExpense: response.data.expense || 45000,
-        investmentTotal: response.data.investment || 25000
+        savings: userData.accountBalance || 0,
+        activeLoan: totalLoanAmount,
+        monthlyIncome: monthlyIncome || 0,
+        monthlyExpense: monthlyExpense || 0,
+        investmentTotal: totalSavings
       });
-    } catch {
+    } catch (error) {
+      console.error('Error fetching finance data:', error);
+      // Set zeros instead of mock data when API fails
       setStats({
-        savings: 50000,
-        activeLoan: 10000,
-        monthlyIncome: 150000,
-        monthlyExpense: 45000,
-        investmentTotal: 25000
+        savings: 0,
+        activeLoan: 0,
+        monthlyIncome: 0,
+        monthlyExpense: 0,
+        investmentTotal: 0
       });
     } finally {
       setLoading(false);

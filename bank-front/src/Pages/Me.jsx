@@ -12,12 +12,16 @@ const Me = () => {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
   const [uploading, setUploading] = useState(false);
+  const [phoneOTP, setPhoneOTP] = useState('');
+  const [phoneVerificationLoading, setPhoneVerificationLoading] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
-    email: user?.email || ''
+    email: user?.email || '',
+    phoneNumber: user?.phoneNumber || ''
   });
   const [passwordData, setPasswordData] = useState({
     oldPassword: '',
@@ -72,8 +76,12 @@ const Me = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        'https://full-bank-app.onrender.com/api/auth/profile',
-        profileData,
+        API_ENDPOINTS.PROFILE,
+        {
+          firstName: profileData.firstName,
+          lastName: profileData.lastName,
+          phoneNumber: profileData.phoneNumber
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -88,6 +96,67 @@ const Me = () => {
       setMessage('Error updating profile. Please try again.');
       setMessageType('error');
       setTimeout(() => setMessage(''), 3000);
+    }
+  };
+
+  const handleVerifyPhone = async () => {
+    if (!profileData.phoneNumber) {
+      setMessage('Please enter a phone number');
+      setMessageType('error');
+      return;
+    }
+
+    setPhoneVerificationLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        API_ENDPOINTS.VERIFY_PHONE,
+        { phoneNumber: profileData.phoneNumber },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage('OTP sent to your phone number');
+      setMessageType('success');
+      setShowPhoneVerification(true);
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Failed to send OTP');
+      setMessageType('error');
+      setTimeout(() => setMessage(''), 3000);
+    } finally {
+      setPhoneVerificationLoading(false);
+    }
+  };
+
+  const handleConfirmPhoneVerification = async () => {
+    if (!phoneOTP) {
+      setMessage('Please enter the OTP');
+      setMessageType('error');
+      return;
+    }
+
+    setPhoneVerificationLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        API_ENDPOINTS.CONFIRM_PHONE_VERIFICATION,
+        { otp: phoneOTP },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.user) {
+        setUser(response.data.user);
+        setMessage('Phone number verified successfully!');
+        setMessageType('success');
+        setShowPhoneVerification(false);
+        setPhoneOTP('');
+        setTimeout(() => setMessage(''), 3000);
+      }
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Failed to verify phone');
+      setMessageType('error');
+      setTimeout(() => setMessage(''), 3000);
+    } finally {
+      setPhoneVerificationLoading(false);
     }
   };
 
@@ -1196,6 +1265,51 @@ const Me = () => {
                 />
               </div>
 
+              <div className="mb-3">
+                <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                  Phone Number
+                </label>
+                <div className="d-flex gap-2">
+                  <input
+                    type="tel"
+                    className="form-control flex-grow-1"
+                    value={profileData.phoneNumber}
+                    onChange={(e) => setProfileData({ ...profileData, phoneNumber: e.target.value })}
+                    placeholder="+234 812 345 6789"
+                    style={{
+                      background: isDarkMode ? '#374151' : COLORS.light,
+                      border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                      color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                      borderRadius: '12px'
+                    }}
+                  />
+                  {profileData.phoneNumber && !user?.phoneVerified && (
+                    <button
+                      type="button"
+                      onClick={handleVerifyPhone}
+                      disabled={phoneVerificationLoading}
+                      className="btn"
+                      style={{
+                        background: COLORS.primary,
+                        color: 'white',
+                        borderRadius: '12px',
+                        border: 'none',
+                        padding: '12px 16px',
+                        whiteSpace: 'nowrap',
+                        opacity: phoneVerificationLoading ? 0.6 : 1
+                      }}
+                    >
+                      {phoneVerificationLoading ? 'Sending...' : 'Verify'}
+                    </button>
+                  )}
+                </div>
+                {user?.phoneVerified && (
+                  <small style={{ color: COLORS.success }}>
+                    <i className="fas fa-check-circle me-1"></i>Verified
+                  </small>
+                )}
+              </div>
+
               <div className="mb-4">
                 <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
                   Email Address
@@ -1246,6 +1360,116 @@ const Me = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Phone Verification Modal */}
+      {showPhoneVerification && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1001,
+            padding: '1rem'
+          }}
+          onClick={() => setShowPhoneVerification(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: 'clamp(20px, 4vw, 32px)',
+              maxWidth: '400px',
+              width: '100%',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                Verify Phone Number
+              </h5>
+              <button
+                onClick={() => setShowPhoneVerification(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: isDarkMode ? '#9CA3AF' : COLORS.lightText
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="small mb-3" style={{ color: COLORS.lightText }}>
+              We've sent a verification code to <strong>{profileData.phoneNumber}</strong>
+            </p>
+
+            <div className="mb-3">
+              <label className="form-label small fw-semibold" style={{ color: COLORS.lightText }}>
+                Enter OTP
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                value={phoneOTP}
+                onChange={(e) => setPhoneOTP(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength="6"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                  color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  fontSize: '1.5rem',
+                  letterSpacing: '8px'
+                }}
+              />
+            </div>
+
+            <div className="d-flex gap-2">
+              <button
+                onClick={handleConfirmPhoneVerification}
+                disabled={phoneVerificationLoading || phoneOTP.length !== 6}
+                className="btn flex-grow-1 fw-semibold"
+                style={{
+                  background: COLORS.primary,
+                  color: 'white',
+                  borderRadius: '12px',
+                  border: 'none',
+                  padding: '12px',
+                  opacity: phoneVerificationLoading || phoneOTP.length !== 6 ? 0.6 : 1,
+                  cursor: phoneVerificationLoading || phoneOTP.length !== 6 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {phoneVerificationLoading ? 'Verifying...' : 'Verify'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPhoneVerification(false)}
+                className="btn flex-grow-1 fw-semibold"
+                style={{
+                  background: isDarkMode ? '#374151' : COLORS.light,
+                  color: isDarkMode ? '#D1D5DB' : COLORS.darkText,
+                  borderRadius: '12px',
+                  border: 'none',
+                  padding: '12px'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
