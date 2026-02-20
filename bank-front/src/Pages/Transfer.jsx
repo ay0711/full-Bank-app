@@ -487,7 +487,10 @@ const Transfer = () => {
                   borderRadius: '12px',
                   padding: '10px'
                 }}
-                onClick={() => document.querySelector('input[type="file"]').click()}
+                onClick={() => {
+                  const input = document.querySelector('input[type="file"]');
+                  if (input) input.click();
+                }}
               >
                 Choose File
               </button>

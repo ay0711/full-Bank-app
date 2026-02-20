@@ -74,8 +74,22 @@ const Notification = () => {
     }
   };
 
-  const deleteNotification = (id) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const deleteNotification = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(
+        `${API_ENDPOINTS.NOTIFICATIONS}/${id}`,
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 8000
+        }
+      );
+      setNotifications(notifications.filter(n => n.id !== id));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      // Still remove from UI even if backend delete fails
+      setNotifications(notifications.filter(n => n.id !== id));
+    }
   };
 
   const getNotificationIcon = (type) => {

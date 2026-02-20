@@ -44,9 +44,13 @@ const PageLayout = ({ children, pageTitle, pageSubtitle }) => {
         className="d-none d-lg-flex flex-column py-3 px-0 app-sidebar"
         style={{
           width: 280,
-          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '100vh',
           background: isDarkMode ? '#1F2937' : COLORS.card,
-          borderRight: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB'
+          borderRight: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
+          overflowX: 'hidden',
+          overflowY: 'hidden'
         }}
       >
         <div className="d-flex align-items-center mb-3 px-4">
@@ -69,7 +73,7 @@ const PageLayout = ({ children, pageTitle, pageSubtitle }) => {
           </h5>
         </div>
 
-        <nav className="flex-grow-1 px-3">
+        <nav className="flex-grow-1 px-3" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (

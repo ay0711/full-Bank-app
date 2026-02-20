@@ -309,11 +309,13 @@ const Dashboard = () => {
         className="d-none d-lg-flex flex-column py-3 px-0 app-sidebar"
         style={{
           width: 280,
-          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
           maxHeight: '100vh',
           background: isDarkMode ? '#1F2937' : COLORS.card,
           borderRight: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB',
-          overflowX: 'hidden'
+          overflowX: 'hidden',
+          overflowY: 'hidden'
         }}
       >
         {/* Logo */}
@@ -331,7 +333,7 @@ const Dashboard = () => {
         </div>
 
         {/* Menu Items */}
-        <nav className="flex-grow-1 px-3">
+        <nav className="flex-grow-1 px-3" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {[
             { label: 'Dashboard', icon: 'fa-home', path: '/dashboard' },
             { label: 'Accounts', icon: 'fa-wallet', path: '/accounts' },

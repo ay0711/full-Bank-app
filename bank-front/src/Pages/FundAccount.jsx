@@ -219,8 +219,11 @@ const FundAccount = () => {
               <div key={quickAmount} className="col-6">
                 <button
                   onClick={() => {
-                    document.getElementById('fund-amount').value = quickAmount;
-                    document.getElementById('fund-amount').dispatchEvent(new Event('input', { bubbles: true }));
+                    const amountInput = document.getElementById('fund-amount');
+                    if (amountInput) {
+                      amountInput.value = quickAmount;
+                      amountInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
                   }}
                   style={{
                     background: isDarkMode ? '#1F2937' : COLORS.card,

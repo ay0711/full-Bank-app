@@ -2,30 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
-import BottomNav from '../components/BottomNav';
+import PageLayout, { COLORS } from '../components/PageLayout';
 import { formatCurrency } from '../utils/currencyConverter';
 import '../styles/DashboardNew.css';
-
-const COLORS = {
-  primary: '#4F46E5',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  secondary: '#6B7280',
-  light: '#F3F4F6',
-  lighter: '#E5E7EB',
-  darkText: '#1F2937',
-  lightText: '#6B7280',
-  card: '#FFFFFF',
-  cardHover: '#F9FAFB'
-};
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const { user, isDarkMode, toggleTheme, logout, settings } = useAppContext();
+  const { user, isDarkMode, settings } = useAppContext();
   const navigate = useNavigate();
   
   // Get currency from settings
@@ -80,157 +66,19 @@ const Transactions = () => {
       tx.amount?.toString().includes(searchQuery)
     );
 
-  if (!user) {
-    return (
-      <div className={`min-vh-100 ${isDarkMode ? 'bg-dark' : 'bg-light'} d-flex justify-content-center align-items-center`}>
-        <div className="spinner-border text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: isDarkMode ? '#111827' : '#F9FAFB' }}>
-      {/* Sidebar */}
-      <aside
-        className="d-none d-lg-flex flex-column py-3 px-0 app-sidebar"
+    <PageLayout pageTitle="Transactions" pageSubtitle="View and manage your transaction history">
+      {/* Filters */}
+      <div
+        className="row g-3 mb-5"
         style={{
-          width: 280,
-          minHeight: '100vh',
           background: isDarkMode ? '#1F2937' : COLORS.card,
-          borderRight: isDarkMode ? '1px solid #374151' : '1px solid #E5E7EB'
+          padding: '24px',
+          borderRadius: '16px',
+          boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+          border: isDarkMode ? '1px solid #374151' : 'none'
         }}
       >
-        <div className="d-flex align-items-center mb-3 px-4">
-          <div style={{
-            width: 42,
-            height: 42,
-            borderRadius: '10px',
-            background: COLORS.primary,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
-            color: 'white',
-            fontWeight: 'bold'
-          }}>
-            B
-          </div>
-          <h5 className="mb-0 fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText, fontSize: '1.25rem' }}>
-            BankDash
-          </h5>
-        </div>
-
-        <nav className="flex-grow-1 px-3">
-          {[
-            { label: 'Dashboard', icon: 'fa-home', path: '/dashboard' },
-            { label: 'Transactions', icon: 'fa-exchange-alt', path: '/transactions' },
-            { label: 'Accounts', icon: 'fa-wallet', path: '/accounts' },
-            { label: 'Investments', icon: 'fa-chart-line', path: '/savings' },
-            { label: 'Credit Cards', icon: 'fa-credit-card', path: '/cards' },
-            { label: 'Loans', icon: 'fa-handshake', path: '/loans' },
-            { label: 'Services', icon: 'fa-cog', path: '/airtime-data' },
-            { label: 'My Privileges', icon: 'fa-crown', path: '/me' }
-          ].map((item) => {
-            const isActive = item.path === '/transactions';
-            return (
-              <button
-                key={`${item.path}-${item.label}`}
-                className="btn w-100 text-start d-flex align-items-center gap-3 px-3 py-2 rounded-2 mb-1"
-                onClick={() => navigate(item.path)}
-                style={{
-                  background: isActive ? COLORS.primary : 'transparent',
-                  color: isActive ? 'white' : isDarkMode ? '#9CA3AF' : COLORS.lightText,
-                  border: 'none',
-                  fontSize: '0.85rem',
-                  fontWeight: isActive ? 600 : 400,
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = isDarkMode ? '#374151' : '#F3F4F6';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'transparent';
-                  }
-                }}
-              >
-                <i className={`fas ${item.icon}`}></i>
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="px-3 border-top" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB', paddingTop: '1.5rem' }}>
-          <button
-            className="btn w-100 text-start d-flex align-items-center gap-3 px-3 py-2 rounded-2 mb-1"
-            onClick={toggleTheme}
-            style={{
-              background: 'transparent',
-              color: isDarkMode ? '#9CA3AF' : COLORS.lightText,
-              border: 'none',
-              fontSize: '0.85rem',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = isDarkMode ? '#374151' : '#F3F4F6';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-            <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
-          </button>
-          <button
-            className="btn w-100 text-start d-flex align-items-center gap-3 px-3 py-2 rounded-2"
-            onClick={() => { logout(); navigate('/signin'); }}
-            style={{
-              background: 'transparent',
-              color: isDarkMode ? '#9CA3AF' : COLORS.lightText,
-              border: 'none',
-              fontSize: '0.85rem',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = isDarkMode ? '#374151' : '#F3F4F6';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-          >
-            <i className="fas fa-sign-out-alt"></i>
-            <span>Log Out</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-grow-1 p-3 p-md-4 p-lg-5 app-main" style={{ overflowY: 'auto' }}>
-        {/* Header */}
-        <div className="mb-5">
-          <h2 className="mb-1 fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText, fontSize: '1.75rem' }}>
-            Transactions
-          </h2>
-          <p className="mb-0" style={{ color: COLORS.lightText, fontSize: '0.875rem' }}>
-            View and manage your transaction history
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div
-          className="row g-3 mb-5"
-          style={{
-            background: isDarkMode ? '#1F2937' : COLORS.card,
-            padding: '24px',
-            borderRadius: '16px',
-            boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-            border: isDarkMode ? '1px solid #374151' : 'none'
-          }}
-        >
           {/* Search */}
           <div className="col-lg-6">
             <div
@@ -390,13 +238,9 @@ const Transactions = () => {
           </div>
         )}
 
-        {/* Bottom Navigation for Mobile */}
-        <div className="d-lg-none">
-          <BottomNav active="transactions" />
-        </div>
-      </main>
-    </div>
-  );
-};
+        {/* Note: Bottom Navigation for Mobile handled by PageLayout */}
+      </PageLayout>
+    );
+  };
 
-export default Transactions;
+  export default Transactions;

@@ -1733,7 +1733,10 @@ const Me = () => {
                 Cancel
               </button>
               <button
-                onClick={() => document.getElementById('image-input').click()}
+                onClick={() => {
+                  const input = document.getElementById('image-input');
+                  if (input) input.click();
+                }}
                 disabled={uploading}
                 className="btn flex-grow-1 fw-semibold"
                 style={{
