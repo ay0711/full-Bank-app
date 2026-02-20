@@ -162,6 +162,12 @@ const Loans = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      console.log('📤 Repayment response:', { 
+        status: response.status, 
+        updatedApp: response.data.application,
+        newAppStatus: response.data.application.status
+      });
+
       setRepayMessage('Repayment processed successfully');
       setTimeout(async () => {
         setShowRepayModal(false);

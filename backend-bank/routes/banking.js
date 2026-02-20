@@ -650,6 +650,15 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
             application.status = 'partial-repayment';
         }
 
+        console.log(`✅ Loan repayment processed:`, {
+            loanName: application.loanName,
+            amount,
+            totalRepaid: application.totalRepaid,
+            loanAmount: application.amount,
+            newStatus: application.status,
+            remainingBalance: application.amount - application.totalRepaid
+        });
+
         // Mark array as modified for Mongoose
         user.markModified('loanApplications');
 
