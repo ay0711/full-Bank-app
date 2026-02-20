@@ -27,6 +27,21 @@ router.put('/notification/:id/read', authenticateToken, async (req, res) => {
     }
 });
 
+// Delete a notification
+router.delete('/notification/:id', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        const notification = user.notifications.id(req.params.id);
+        if (!notification) return res.status(404).json({ message: 'Notification not found' });
+        notification.deleteOne();
+        await user.save();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Get all support requests
 router.get('/support', authenticateToken, async (req, res) => {
     try {
