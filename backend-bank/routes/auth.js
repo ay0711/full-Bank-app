@@ -580,4 +580,128 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
+// Update profile (firstName, lastName, phoneNumber)
+router.put('/profile', authenticateToken, async (req, res) => {
+    try {
+        const { firstName, lastName, phoneNumber } = req.body;
+        const user = await User.findById(req.user._id);
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        if (firstName) user.firstName = firstName;
+        if (lastName) user.lastName = lastName;
+        if (phoneNumber) user.phoneNumber = phoneNumber;
+        
+        await user.save();
+        
+        res.json({ 
+            message: 'Profile updated successfully',
+            user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phoneNumber: user.phoneNumber,
+                accountNumber: user.accountNumber,
+                accountBalance: user.accountBalance,
+                accountType: user.accountType,
+                profileImage: user.profileImage
+            }
+        });
+    } catch (error) {
+        if (error.message.includes('Invalid phone number format')) {
+            return res.status(400).json({ message: 'Invalid phone number format' });
+        }
+        res.status(500).json({ message: 'Error updating profile' });
+    }
+});
+
+// Verify phone number
+router.post('/verify-phone', authenticateToken, async (req, res) => {
+    try {
+        const { phoneNumber } = req.body;
+        
+        if (!phoneNumber) {
+            return res.status(400).json({ message: 'Phone number is required' });
+        }
+        
+        // Validate phone format
+        const phoneRegex = /^\+?(\d{1,3})?[-.\s]?(\d{1,4})[-.\s]?(\d{1,4})[-.\s]?(\d{1,9})$/;
+        if (!phoneRegex.test(phoneNumber)) {
+            return res.status(400).json({ message: 'Invalid phone number format' });
+        }
+        
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        // Generate OTP for phone verification
+        const otp = generateOTP();
+        otpStore.set(`phone_${user._id}`, { otp, phoneNumber, expiresAt: Date.now() + 10 * 60 * 1000 });
+        
+        // In production, send SMS with OTP
+        console.log(`Phone verification OTP for ${phoneNumber}: ${otp}`);
+        
+        res.json({ 
+            message: 'OTP sent to phone number',
+            // For development, return OTP (remove in production)
+            otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error verifying phone' });
+    }
+});
+
+// Confirm phone verification with OTP
+router.post('/confirm-phone-verification', authenticateToken, async (req, res) => {
+    try {
+        const { otp } = req.body;
+        const user = await User.findById(req.user._id);
+        
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const otpData = otpStore.get(`phone_${user._id}`);
+        
+        if (!otpData) {
+            return res.status(400).json({ message: 'No pending phone verification' });
+        }
+        
+        if (otpData.expiresAt < Date.now()) {
+            otpStore.delete(`phone_${user._id}`);
+            return res.status(400).json({ message: 'OTP has expired' });
+        }
+        
+        if (otpData.otp !== otp) {
+            return res.status(400).json({ message: 'Invalid OTP' });
+        }
+        
+        // Update phone and mark as verified
+        user.phoneNumber = otpData.phoneNumber;
+        user.phoneVerified = true;
+        await user.save();
+        
+        otpStore.delete(`phone_${user._id}`);
+        
+        res.json({ 
+            message: 'Phone verified successfully',
+            user: {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phoneNumber: user.phoneNumber,
+                phoneVerified: user.phoneVerified,
+                accountNumber: user.accountNumber
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error confirming phone verification' });
+    }
+});
+
 module.exports = router;

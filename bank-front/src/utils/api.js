@@ -8,6 +8,10 @@ export const API_ENDPOINTS = {
   FORGOT_PASSWORD: `${API_URL}/api/auth/forgot-password`,
   USER: (accountNumber) => `${API_URL}/api/auth/user/${accountNumber}`,
   PROFILE_IMAGE: `${API_URL}/api/auth/profile-image`,
+  PROFILE: `${API_URL}/api/auth/profile`,
+  VERIFY_PHONE: `${API_URL}/api/auth/verify-phone`,
+  CONFIRM_PHONE_VERIFICATION: `${API_URL}/api/auth/confirm-phone-verification`,
+  NOTIFICATIONS: `${API_URL}/api/auth/notification`,
   HEALTH: `${API_URL}/api/auth/health`,
   UPGRADE_ACCOUNT: `${API_URL}/api/auth/upgrade-account`,
   

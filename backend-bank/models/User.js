@@ -18,6 +18,20 @@ const userSchema = new mongoose.Schema({
         trim: true,
         lowercase: true
     },
+    phoneNumber: {
+        type: String,
+        sparse: true,
+        validate: {
+            validator: function(v) {
+                return /^\+?(\d{1,3})?[-.\s]?(\d{1,4})[-.\s]?(\d{1,4})[-.\s]?(\d{1,9})$/.test(v || '');
+            },
+            message: 'Invalid phone number format'
+        }
+    },
+    phoneVerified: {
+        type: Boolean,
+        default: false
+    },
     password: {
         type: String,
         required: true,
@@ -116,8 +130,14 @@ const userSchema = new mongoose.Schema({
         amount: { type: Number, required: true },
         duration: { type: Number, required: true },
         interestRate: { type: Number, required: true },
-        status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+        status: { type: String, enum: ['pending', 'approved', 'rejected', 'repaid', 'partial-repayment'], default: 'pending' },
         reason: { type: String, default: '' },
+        totalRepaid: { type: Number, default: 0 },
+        repayments: [{
+            amount: { type: Number, required: true },
+            date: { type: Date, default: Date.now },
+            remainingBalance: { type: Number }
+        }],
         createdAt: { type: Date, default: Date.now }
     }],
         notifications: [{
