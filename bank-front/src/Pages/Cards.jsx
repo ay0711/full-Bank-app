@@ -27,7 +27,8 @@ const Cards = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(API_ENDPOINTS.CARDS, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
       setCards(response.data.cards || []);
     } catch (error) {
@@ -40,7 +41,8 @@ const Cards = () => {
       try {
         const token = localStorage.getItem('token');
         await axios.post(API_ENDPOINTS.CARDS_REQUEST, { type: cardType }, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 8000
         });
         setMessage(`${cardType === 'virtual' ? 'Virtual' : 'Physical'} card request submitted successfully!`);
         setShowRequestModal(false);
@@ -57,7 +59,8 @@ const Cards = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(API_ENDPOINTS.CARDS_BLOCK(cardId), {}, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
       setCards(cards.map(card =>
         card._id === cardId ? { ...card, status: 'Blocked' } : card
@@ -74,7 +77,8 @@ const Cards = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(API_ENDPOINTS.CARDS_UNBLOCK(cardId), {}, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
       setCards(cards.map(card =>
         card._id === cardId ? { ...card, status: 'Active' } : card
@@ -97,7 +101,8 @@ const Cards = () => {
       try {
         const token = localStorage.getItem('token');
         await axios.delete(API_ENDPOINTS.CARDS_DELETE(cardToDelete), {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 8000
         });
         setCards(cards.filter(card => card._id !== cardToDelete));
         setCardToDelete(null);

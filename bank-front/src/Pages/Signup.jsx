@@ -54,7 +54,7 @@ const Signup = () => {
         lastName: values.lastName,
         email: values.email,
         password: values.password
-      });
+      }, { timeout: 8000 });
 
       console.log('Signup successful:', response.data);
       
@@ -108,7 +108,7 @@ const Signup = () => {
         {/* Header with logo and theme toggle */}
         <div className="auth-header">
           <div className="logo-container animate-bounce-slow">
-            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" />
+            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" loading="lazy" />
             <div className="logo-glow"></div>
           </div>
           <button 

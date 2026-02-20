@@ -30,7 +30,7 @@ const Withdraw = () => {
           amount: parseFloat(values.amount),
           withdrawalType: values.accountType
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
 
       setMessage('Withdrawal successful! Check your account.');

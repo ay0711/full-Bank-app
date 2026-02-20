@@ -49,7 +49,7 @@ const Signin = () => {
   const response = await axios.post('https://full-bank-app.onrender.com/api/auth/signin', {
         email,
         password: values.password
-      });
+      }, { timeout: 8000 });
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       setUser(response.data.user); // Update context immediately
@@ -111,7 +111,7 @@ const Signin = () => {
         {/* Header with logo and theme toggle */}
         <div className="auth-header">
           <div className="logo-container animate-bounce-slow">
-            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" />
+            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" loading="lazy" />
             <div className="logo-glow"></div>
           </div>
           <button 

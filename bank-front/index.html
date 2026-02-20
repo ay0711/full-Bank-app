@@ -2,11 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/image/ay bank1.png" />
+    <link rel="icon" type="image/png" href="/image/ay bank1.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ayanfe's Bank</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#317EFB" />
+    <!-- Preload critical assets for LCP -->
+    <link rel="preload" as="image" href="/src/assets/ay_bank_circle.png" />
+    <!-- DNS prefetch for API to reduce connection time -->
+    <link rel="dns-prefetch" href="https://bank-backend.onrender.com" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   </head>

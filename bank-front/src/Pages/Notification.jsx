@@ -16,9 +16,10 @@ const Notification = () => {
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('token');
-      // Add cache-busting query param to force fresh data
+      // Add cache-busting query param and timeout to improve LCP
       const response = await axios.get(`${API_ENDPOINTS.NOTIFICATIONS}?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000 // 5 second timeout for faster failure feedback
       });
       const notifs = response.data.notifications || [];
       

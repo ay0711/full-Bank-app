@@ -36,7 +36,7 @@ const ForgotPassword = () => {
     try {
       await axios.post('https://full-bank-app.onrender.com/api/auth/forgot-password', {
         email: values.email
-      });
+      }, { timeout: 8000 });
       setEmail(values.email);
       setMessage('OTP sent to your email!');
       setTimeout(() => {
@@ -57,7 +57,7 @@ const ForgotPassword = () => {
       await axios.post('https://full-bank-app.onrender.com/api/auth/verify-otp', {
         email,
         otp: values.otp
-      });
+      }, { timeout: 8000 });
       setMessage('OTP verified!');
       setTimeout(() => {
         setStep(3);
@@ -77,7 +77,7 @@ const ForgotPassword = () => {
       await axios.post('https://full-bank-app.onrender.com/api/auth/reset-password', {
         email,
         password: values.password
-      });
+      }, { timeout: 8000 });
       setMessage('Password reset successful!');
       setTimeout(() => {
         navigate('/signin');
@@ -106,7 +106,7 @@ const ForgotPassword = () => {
       <div className="auth-content">
         <div className="auth-header">
           <div className="logo-container animate-bounce-slow">
-            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" />
+            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" loading="lazy" />
             <div className="logo-glow"></div>
           </div>
           <button 

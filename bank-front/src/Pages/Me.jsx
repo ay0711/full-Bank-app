@@ -82,7 +82,7 @@ const Me = () => {
           lastName: profileData.lastName,
           phoneNumber: profileData.phoneNumber
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
 
       if (response.data.user) {
@@ -112,7 +112,7 @@ const Me = () => {
       await axios.post(
         API_ENDPOINTS.VERIFY_PHONE,
         { phoneNumber: profileData.phoneNumber },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
       setMessage('OTP sent to your phone number');
       setMessageType('success');
@@ -140,7 +140,7 @@ const Me = () => {
       const response = await axios.post(
         API_ENDPOINTS.CONFIRM_PHONE_VERIFICATION,
         { otp: phoneOTP },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
       
       if (response.data.user) {
@@ -184,7 +184,7 @@ const Me = () => {
           oldPassword: passwordData.oldPassword,
           newPassword: passwordData.newPassword
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
 
       setMessage('Password changed successfully!');
@@ -228,7 +228,7 @@ const Me = () => {
         const response = await axios.put(
           'https://full-bank-app.onrender.com/api/auth/profile-image',
           { image: base64 },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
         );
 
         // Update user context with new image from database
@@ -287,6 +287,7 @@ const Me = () => {
               <img
                 src={profileImage || `https://ui-avatars.com/api/?name=${user?.firstName}+${user?.lastName}&background=${COLORS.primary.substring(1)}&color=white&size=120`}
                 alt="profile"
+                loading="lazy"
                 style={{
                   width: '120px',
                   height: '120px',
@@ -662,7 +663,7 @@ const Me = () => {
               const response = await axios.post(
                 API_ENDPOINTS.UPGRADE_ACCOUNT,
                 { accountType: plan.tier },
-                { headers: { Authorization: `Bearer ${token}` } }
+                { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
               );
               
               // Update user context with new balance and account type
@@ -1669,6 +1670,7 @@ const Me = () => {
                 <img
                   src={profileImage}
                   alt="preview"
+                  loading="lazy"
                   style={{
                     maxWidth: '200px',
                     height: '200px',

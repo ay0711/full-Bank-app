@@ -37,7 +37,7 @@ const FundAccount = () => {
           amount: parseFloat(values.amount),
           paymentMethod: values.paymentMethod
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
 
       setMessage('Funding successful! Balance updated.');

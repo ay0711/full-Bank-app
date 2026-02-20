@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, startTransition, useMemo } from 'react';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
 import ayBankCircle from '../../image/ay bank cirlcle.png';
@@ -31,6 +31,7 @@ const chartColors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC
 const Dashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [analytics, setAnalytics] = useState({ totalSpent: 0, totalReceived: 0 });
+  const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
@@ -54,16 +55,102 @@ const Dashboard = () => {
       navigate('/signin');
       return;
     }
-    // Fetch transactions and notifications
-    const fetchData = async () => {
+    // Fetch ONLY transactions for critical path
+    const fetchCriticalData = async () => {
       try {
         setIsLoading(true);
-        const [txRes, notifRes, recipientsRes] = await Promise.all([
-          axios.get(API_ENDPOINTS.TRANSACTIONS, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com'}/api/auth/notification`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { notifications: [] } })),
-          axios.get(API_ENDPOINTS.RECIPIENTS, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { recipients: [] } }))
-        ]);
+        const txRes = await axios.get(API_ENDPOINTS.TRANSACTIONS, { 
+          headers: { Authorization: `Bearer ${token}` }, 
+          timeout: 8000 
+        });
         setTransactions(txRes.data.transactions || []);
+        
+        // Calculate analytics immediately
+        let totalSpent = 0, totalReceived = 0;
+        (txRes.data.transactions || []).forEach(tx => {
+          if (tx.type === 'debit') totalSpent += tx.amount;
+          if (tx.type === 'credit') totalReceived += tx.amount;
+        });
+        setAnalytics({ totalSpent, totalReceived });
+        setAnalyticsLoaded(true);
+        
+        // Defer non-critical calculations to not block rendering
+        startTransition(() => {
+          // Generate weekly activity data from REAL transactions
+          const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const today = new Date();
+          const weeklyActivity = weekDays.map((day, index) => {
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() - (6 - index));
+            const dateStr = targetDate.toISOString().split('T')[0];
+            
+            const dayTransactions = (txRes.data.transactions || []).filter(tx => {
+              const txDate = new Date(tx.date || tx.createdAt).toISOString().split('T')[0];
+              return txDate === dateStr;
+            });
+            
+            const deposit = dayTransactions
+              .filter(tx => tx.type === 'credit')
+              .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+            const withdraw = dayTransactions
+              .filter(tx => tx.type === 'debit')
+              .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+            
+            return { day, Deposit: deposit, Withdraw: withdraw };
+          });
+          setWeeklyData(weeklyActivity);
+
+          // Generate expense statistics from REAL transaction categories
+          const categories = {};
+          (txRes.data.transactions || []).forEach(tx => {
+            if (tx.type === 'debit') {
+              const category = tx.category || 'Others';
+              categories[category] = (categories[category] || 0) + (tx.amount || 0);
+            }
+          });
+          
+          const totalExpenses = Object.values(categories).reduce((sum, val) => sum + val, 0) || 1;
+          const expenseStats = Object.entries(categories).map(([name, value]) => ({
+            name,
+            value: Math.round((value / totalExpenses) * 100)
+          })).sort((a, b) => b.value - a.value).slice(0, 4);
+          
+          // Ensure we have at least some data for display
+          if (expenseStats.length === 0) {
+            setExpenseData([
+              { name: 'No expenses', value: 100 }
+            ]);
+          } else {
+            setExpenseData(expenseStats);
+          }
+        });
+      } catch (err) {
+        // fallback: do nothing
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCriticalData();
+  }, [navigate, setUser, user]);
+
+  // Fetch notifications and recipients separately (non-critical)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const fetchNonCritical = async () => {
+      try {
+        const [notifRes, recipientsRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_API_URL || 'https://full-bank-app.onrender.com'}/api/auth/notification`, { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000
+          }).catch(() => ({ data: { notifications: [] } })),
+          axios.get(API_ENDPOINTS.RECIPIENTS, { 
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000
+          }).catch(() => ({ data: { recipients: [] } }))
+        ]);
+        
         setNotifications(notifRes.data.notifications || []);
         
         const recipients = (recipientsRes.data.recipients || []).map((recipient, index) => {
@@ -79,70 +166,13 @@ const Dashboard = () => {
         });
 
         setQuickTransferUsers(recipients.slice(0, 3));
-        
-        // Calculate analytics
-        let totalSpent = 0, totalReceived = 0;
-        (txRes.data.transactions || []).forEach(tx => {
-          if (tx.type === 'debit') totalSpent += tx.amount;
-          if (tx.type === 'credit') totalReceived += tx.amount;
-        });
-        setAnalytics({ totalSpent, totalReceived });
-
-        // Generate weekly activity data from REAL transactions
-        const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const today = new Date();
-        const weeklyActivity = weekDays.map((day, index) => {
-          const targetDate = new Date(today);
-          targetDate.setDate(today.getDate() - (6 - index));
-          const dateStr = targetDate.toISOString().split('T')[0];
-          
-          const dayTransactions = (txRes.data.transactions || []).filter(tx => {
-            const txDate = new Date(tx.date || tx.createdAt).toISOString().split('T')[0];
-            return txDate === dateStr;
-          });
-          
-          const deposit = dayTransactions
-            .filter(tx => tx.type === 'credit')
-            .reduce((sum, tx) => sum + (tx.amount || 0), 0);
-          const withdraw = dayTransactions
-            .filter(tx => tx.type === 'debit')
-            .reduce((sum, tx) => sum + (tx.amount || 0), 0);
-          
-          return { day, Deposit: deposit, Withdraw: withdraw };
-        });
-        setWeeklyData(weeklyActivity);
-
-        // Generate expense statistics from REAL transaction categories
-        const categories = {};
-        (txRes.data.transactions || []).forEach(tx => {
-          if (tx.type === 'debit') {
-            const category = tx.category || 'Others';
-            categories[category] = (categories[category] || 0) + (tx.amount || 0);
-          }
-        });
-        
-        const totalExpenses = Object.values(categories).reduce((sum, val) => sum + val, 0) || 1;
-        const expenseStats = Object.entries(categories).map(([name, value]) => ({
-          name,
-          value: Math.round((value / totalExpenses) * 100)
-        })).sort((a, b) => b.value - a.value).slice(0, 4);
-        
-        // Ensure we have at least some data for display
-        if (expenseStats.length === 0) {
-          setExpenseData([
-            { name: 'No expenses', value: 100 }
-          ]);
-        } else {
-          setExpenseData(expenseStats);
-        }
       } catch (err) {
-        // fallback: do nothing
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching non-critical data:', err);
       }
     };
-    fetchData();
-  }, [navigate, setUser, user]);
+    
+    fetchNonCritical();
+  }, []);
 
   if (!user) {
     return (
@@ -236,6 +266,25 @@ const Dashboard = () => {
     </div>
   );
 
+  const SkeletonStatCard = () => (
+    <div
+      className={`rounded-4 border-0 overflow-hidden`}
+      style={{
+        background: isDarkMode ? '#1F2937' : COLORS.card,
+        boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+        padding: '24px',
+        border: isDarkMode ? '1px solid #374151' : 'none'
+      }}
+    >
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <div style={{ height: '16px', background: isDarkMode ? '#374151' : '#f0f0f0', borderRadius: '4px', width: '80px' }} />
+        <div style={{ width: 50, height: 50, borderRadius: '12px', background: isDarkMode ? '#374151' : '#f0f0f0' }} />
+      </div>
+      <div style={{ height: '28px', background: isDarkMode ? '#374151' : '#f0f0f0', borderRadius: '4px', marginBottom: '12px', width: '100px' }} />
+      <div style={{ height: '14px', background: isDarkMode ? '#374151' : '#f0f0f0', borderRadius: '4px', width: '60px' }} />
+    </div>
+  );
+
   const ChartCard = ({ title, children }) => (
     <div
       style={{
@@ -269,7 +318,13 @@ const Dashboard = () => {
       >
         {/* Logo */}
         <div className="d-flex align-items-center mb-3 px-4">
-          <img src={ayBankCircle} alt="BankDash" style={{ width: 42, height: 42, marginRight: 12, borderRadius: '10px' }} />
+          <img
+            src={ayBankCircle}
+            alt="BankDash"
+            loading="eager"
+            fetchPriority="high"
+            style={{ width: 42, height: 42, marginRight: 12, borderRadius: '10px' }}
+          />
           <h5 className="mb-0 fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText, fontSize: '1.25rem' }}>
             BankDash
           </h5>
@@ -621,24 +676,32 @@ const Dashboard = () => {
             />
           </div>
           <div className="col-md-6 col-lg-4">
-            <StatCard
-              title="Total Income"
-              value={formatCurrency(analytics.totalReceived, currency)}
-              change={1.2}
-              icon="📈"
-              iconBg={isDarkMode ? '#374151' : '#E8F5E9'}
-              changeType="positive"
-            />
+            {analyticsLoaded ? (
+              <StatCard
+                title="Total Income"
+                value={formatCurrency(analytics.totalReceived, currency)}
+                change={1.2}
+                icon="📈"
+                iconBg={isDarkMode ? '#374151' : '#E8F5E9'}
+                changeType="positive"
+              />
+            ) : (
+              <SkeletonStatCard />
+            )}
           </div>
           <div className="col-md-6 col-lg-4">
-            <StatCard
-              title="Total Expense"
-              value={formatCurrency(analytics.totalSpent, currency)}
-              change={0.5}
-              icon="📉"
-              iconBg={isDarkMode ? '#374151' : '#FFEBEE'}
-              changeType="negative"
-            />
+            {analyticsLoaded ? (
+              <StatCard
+                title="Total Expense"
+                value={formatCurrency(analytics.totalSpent, currency)}
+                change={0.5}
+                icon="📉"
+                iconBg={isDarkMode ? '#374151' : '#FFEBEE'}
+                changeType="negative"
+              />
+            ) : (
+              <SkeletonStatCard />
+            )}
           </div>
         </div>
 

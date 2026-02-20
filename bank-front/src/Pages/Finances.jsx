@@ -25,13 +25,18 @@ const Finances = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(API_ENDPOINTS.DASHBOARD, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000  // 8s timeout - fail fast if backend is slow
       });
       const userData = response.data.user || {};
       
       // Calculate total loan amount from loan applications
+      // Include both 'approved' and 'partial-repayment' loans as active
       const totalLoanAmount = userData.loanApplications?.reduce((sum, loan) => {
-        return loan.status === 'approved' ? sum + (loan.amount - (loan.totalRepaid || 0)) : sum;
+        if (loan.status === 'approved' || loan.status === 'partial-repayment') {
+          return sum + (loan.amount - (loan.totalRepaid || 0));
+        }
+        return sum;
       }, 0) || 0;
       
       // Calculate monthly expense from transactions
@@ -140,191 +145,202 @@ const Finances = () => {
     </div>
   );
 
+  const SkeletonStat = () => (
+    <div
+      style={{
+        background: isDarkMode ? '#1F2937' : COLORS.card,
+        borderRadius: '16px',
+        padding: '24px',
+        border: isDarkMode ? '1px solid #374151' : 'none',
+        boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+        borderLeft: `4px solid ${COLORS.light}`
+      }}
+    >
+      <div className="d-flex justify-content-between align-items-start">
+        <div style={{ width: '100%' }}>
+          <div style={{ height: '16px', background: isDarkMode ? '#374151' : '#f0f0f0', borderRadius: '4px', marginBottom: '12px', width: '60%' }} />
+          <div style={{ height: '28px', background: isDarkMode ? '#374151' : '#f0f0f0', borderRadius: '4px', width: '80%' }} />
+        </div>
+        <div style={{ fontSize: '1.75rem', opacity: 0.3 }}>📊</div>
+      </div>
+    </div>
+  );
+
   return (
     <PageLayout pageTitle="Finances" pageSubtitle="Overview of your financial status">
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div className="spinner-border" style={{ color: COLORS.primary }} role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
+      {/* Key Statistics - Always Show (Skeleton While Loading) */}
+      <div className="row g-4 mb-5">
+        <div className="col-md-6">
+          {loading ? <SkeletonStat /> : <StatCard icon="💰" label="Savings" amount={stats.savings} color={COLORS.success} />}
         </div>
-      ) : (
-        <>
-          {/* Key Statistics */}
-          <div className="row g-4 mb-5">
-            <div className="col-md-6">
-              <StatCard icon="💰" label="Savings" amount={stats.savings} color={COLORS.success} />
-            </div>
-            <div className="col-md-6">
-              <StatCard icon="📊" label="Active Loan" amount={stats.activeLoan} color={COLORS.danger} />
-            </div>
-            <div className="col-md-6">
-              <StatCard icon="📈" label="Monthly Income" amount={stats.monthlyIncome} color={COLORS.primary} />
-            </div>
-            <div className="col-md-6">
-              <StatCard icon="💸" label="Monthly Expense" amount={stats.monthlyExpense} color={COLORS.warning} />
-            </div>
-          </div>
+        <div className="col-md-6">
+          {loading ? <SkeletonStat /> : <StatCard icon="📊" label="Active Loan" amount={stats.activeLoan} color={COLORS.danger} />}
+        </div>
+        <div className="col-md-6">
+          {loading ? <SkeletonStat /> : <StatCard icon="📈" label="Monthly Income" amount={stats.monthlyIncome} color={COLORS.primary} />}
+        </div>
+        <div className="col-md-6">
+          {loading ? <SkeletonStat /> : <StatCard icon="💸" label="Monthly Expense" amount={stats.monthlyExpense} color={COLORS.warning} />}
+        </div>
+      </div>
 
-          {/* Finance Summary */}
-          <div className="row g-4 mb-5">
-            <div className="col-lg-4">
-              <div
-                style={{
-                  background: isDarkMode ? '#1F2937' : COLORS.card,
-                  borderRadius: '16px',
-                  padding: '24px',
-                  border: isDarkMode ? '1px solid #374151' : 'none',
-                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-                  textAlign: 'center'
-                }}
-              >
-                <p className="small mb-2" style={{ color: COLORS.lightText }}>
-                  Net Balance
-                </p>
-                <p className="fw-bold mb-3" style={{ fontSize: '1.75rem', color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
-                  {formatCurrency(stats.monthlyIncome - stats.monthlyExpense)}
-                </p>
-                <div
-                  style={{
-                    background: isDarkMode ? '#374151' : COLORS.light,
-                    borderRadius: '12px',
-                    padding: '12px',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  <i className="fas fa-check" style={{ color: COLORS.success, marginRight: '8px' }}></i>
-                  <span style={{ color: COLORS.lightText }}>Good Financial Health</span>
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div
-                style={{
-                  background: isDarkMode ? '#1F2937' : COLORS.card,
-                  borderRadius: '16px',
-                  padding: '24px',
-                  border: isDarkMode ? '1px solid #374151' : 'none',
-                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-                  textAlign: 'center'
-                }}
-              >
-                <p className="small mb-2" style={{ color: COLORS.lightText }}>
-                  Savings Rate
-                </p>
-                <p className="fw-bold mb-3" style={{ fontSize: '1.75rem', color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
-                  {((stats.savings / stats.monthlyIncome) * 100).toFixed(1)}%
-                </p>
-                <div
-                  style={{
-                    height: '8px',
-                    background: isDarkMode ? '#374151' : COLORS.light,
-                    borderRadius: '999px',
-                    overflow: 'hidden'
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      background: COLORS.success,
-                      width: `${Math.min(((stats.savings / stats.monthlyIncome) * 100), 100)}%`
-                    }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-            <div className="col-lg-4">
-              <div
-                style={{
-                  background: isDarkMode ? '#1F2937' : COLORS.card,
-                  borderRadius: '16px',
-                  padding: '24px',
-                  border: isDarkMode ? '1px solid #374151' : 'none',
-                  boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-                  textAlign: 'center'
-                }}
-              >
-                <p className="small mb-2" style={{ color: COLORS.lightText }}>
-                  Investments
-                </p>
-                <p className="fw-bold mb-3" style={{ fontSize: '1.75rem', color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
-                  {formatCurrency(stats.investmentTotal)}
-                </p>
-                <div
-                  style={{
-                    background: isDarkMode ? '#374151' : COLORS.light,
-                    borderRadius: '12px',
-                    padding: '12px',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  <span style={{ color: COLORS.success }}>↑ 12% Growth</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <h5 className="fw-bold mb-3" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
-            Quick Actions
-          </h5>
-          <div className="row g-3">
-            <div className="col-md-6">
-              <ActionCard
-                icon="🏦"
-                title="Savings Goals"
-                description="Create and track your savings targets"
-                onClick={() => navigate('/savings')}
-              />
-            </div>
-            <div className="col-md-6">
-              <ActionCard
-                icon="💳"
-                title="Loans & Credits"
-                description="View and manage your active loans"
-                onClick={() => navigate('/loans')}
-              />
-            </div>
-            <div className="col-md-6">
-              <ActionCard
-                icon="📊"
-                title="Financial Reports"
-                description="View detailed spending analytics"
-                onClick={() => navigate('/transactions')}
-              />
-            </div>
-            <div className="col-md-6">
-              <ActionCard
-                icon="🎯"
-                title="Financial Planning"
-                description="Get personalized financial advice"
-                onClick={() => {}}
-              />
-            </div>
-          </div>
-
-          {/* Tips Section */}
+      {/* Finance Summary */}
+      <div className="row g-4 mb-5">
+        <div className="col-lg-4">
           <div
             style={{
-              background: isDarkMode ? '#1F2937' : COLORS.light,
+              background: isDarkMode ? '#1F2937' : COLORS.card,
               borderRadius: '16px',
               padding: '24px',
               border: isDarkMode ? '1px solid #374151' : 'none',
-              marginTop: '32px'
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              textAlign: 'center'
             }}
           >
-            <h6 className="fw-bold mb-3" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
-              💡 Financial Tips
-            </h6>
-            <ul style={{ color: COLORS.lightText, paddingLeft: '20px', margin: 0 }}>
-              <li className="mb-2">Aim to save at least 20% of your monthly income</li>
-              <li className="mb-2">Review your spending regularly to identify cut costs</li>
-              <li className="mb-2">Build an emergency fund for 3-6 months of expenses</li>
-              <li>Diversify your investments for better returns</li>
-            </ul>
+            <p className="small mb-2" style={{ color: COLORS.lightText }}>
+              Net Balance
+            </p>
+            <p className="fw-bold mb-3" style={{ fontSize: '1.75rem', color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              {loading ? <span style={{ background: isDarkMode ? '#374151' : '#f0f0f0', display: 'inline-block', width: '150px', height: '28px', borderRadius: '4px' }} /> : formatCurrency(stats.monthlyIncome - stats.monthlyExpense)}
+            </p>
+            <div
+              style={{
+                background: isDarkMode ? '#374151' : COLORS.light,
+                borderRadius: '12px',
+                padding: '12px',
+                fontSize: '0.875rem'
+              }}
+            >
+              <i className="fas fa-check" style={{ color: COLORS.success, marginRight: '8px' }}></i>
+              <span style={{ color: COLORS.lightText }}>Good Financial Health</span>
+            </div>
           </div>
-        </>
-      )}
+        </div>
+        <div className="col-lg-4">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              textAlign: 'center'
+            }}
+          >
+            <p className="small mb-2" style={{ color: COLORS.lightText }}>
+              Savings Rate
+            </p>
+            <p className="fw-bold mb-3" style={{ fontSize: '1.75rem', color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              {loading ? <span style={{ background: isDarkMode ? '#374151' : '#f0f0f0', display: 'inline-block', width: '150px', height: '28px', borderRadius: '4px' }} /> : ((stats.savings / stats.monthlyIncome) * 100).toFixed(1) + '%'}
+            </p>
+            <div
+              style={{
+                height: '8px',
+                background: isDarkMode ? '#374151' : COLORS.light,
+                borderRadius: '999px',
+                overflow: 'hidden'
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  background: COLORS.success,
+                  width: `${Math.min(((stats.savings / stats.monthlyIncome) * 100), 100)}%`
+                }}
+              ></div>
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-4">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              border: isDarkMode ? '1px solid #374151' : 'none',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              textAlign: 'center'
+            }}
+          >
+            <p className="small mb-2" style={{ color: COLORS.lightText }}>
+              Investments
+            </p>
+            <p className="fw-bold mb-3" style={{ fontSize: '1.75rem', color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              {loading ? <span style={{ background: isDarkMode ? '#374151' : '#f0f0f0', display: 'inline-block', width: '150px', height: '28px', borderRadius: '4px' }} /> : formatCurrency(stats.investmentTotal)}
+            </p>
+            <div
+              style={{
+                background: isDarkMode ? '#374151' : COLORS.light,
+                borderRadius: '12px',
+                padding: '12px',
+                fontSize: '0.875rem'
+              }}
+            >
+              <span style={{ color: COLORS.success }}>↑ 12% Growth</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <h5 className="fw-bold mb-3" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+        Quick Actions
+      </h5>
+      <div className="row g-3">
+        <div className="col-md-6">
+          <ActionCard
+            icon="🏦"
+            title="Savings Goals"
+            description="Create and track your savings targets"
+            onClick={() => navigate('/savings')}
+          />
+        </div>
+        <div className="col-md-6">
+          <ActionCard
+            icon="💳"
+            title="Loans & Credits"
+            description="View and manage your active loans"
+            onClick={() => navigate('/loans')}
+          />
+        </div>
+        <div className="col-md-6">
+          <ActionCard
+            icon="📊"
+            title="Financial Reports"
+            description="View detailed spending analytics"
+            onClick={() => navigate('/transactions')}
+          />
+        </div>
+        <div className="col-md-6">
+          <ActionCard
+            icon="🎯"
+            title="Financial Planning"
+            description="Get personalized financial advice"
+            onClick={() => {}}
+          />
+        </div>
+      </div>
+
+      {/* Tips Section */}
+      <div
+        style={{
+          background: isDarkMode ? '#1F2937' : COLORS.light,
+          borderRadius: '16px',
+          padding: '24px',
+          border: isDarkMode ? '1px solid #374151' : 'none',
+          marginTop: '32px'
+        }}
+      >
+        <h6 className="fw-bold mb-3" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+          💡 Financial Tips
+        </h6>
+        <ul style={{ color: COLORS.lightText, paddingLeft: '20px', margin: 0 }}>
+          <li className="mb-2">Aim to save at least 20% of your monthly income</li>
+          <li className="mb-2">Review your spending regularly to identify cut costs</li>
+          <li className="mb-2">Build an emergency fund for 3-6 months of expenses</li>
+          <li>Diversify your investments for better returns</li>
+        </ul>
+      </div>
     </PageLayout>
   );
 };

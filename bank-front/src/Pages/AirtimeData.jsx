@@ -35,7 +35,8 @@ const AirtimeData = () => {
       const token = localStorage.getItem('token');
       const url = `https://full-bank-app.onrender.com/api/opay/${type}`;
       const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
       setHistory(response.data.history || [
         { type: 'airtime', amount: 500, phone: '08012345678', date: '2025-08-10' },
@@ -87,7 +88,8 @@ const AirtimeData = () => {
         : { phone, planId: selectedPlan, amount: dataPlans.find(p => p.id === selectedPlan)?.price };
 
       await axios.post(url, payload, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
       
       const purchaseAmount = type === 'data' 

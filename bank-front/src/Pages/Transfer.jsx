@@ -51,7 +51,7 @@ const Transfer = () => {
       const token = localStorage.getItem('token');
       const response = await axios.get(
         API_ENDPOINTS.USER(accountNumber),
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
       
       if (response.data.user) {

@@ -28,7 +28,7 @@ const Profile = () => {
           const res = await axios.put(
             'https://full-bank-app.onrender.com/api/auth/profile-image',
             { image: reader.result },
-            { headers: { Authorization: `Bearer ${token}` } }
+            { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
           );
           setUser({ ...user, profileImage: res.data.profileImage });
           setMessage('Profile image updated!');
@@ -52,7 +52,7 @@ const Profile = () => {
         await axios.put(
           'https://full-bank-app.onrender.com/api/auth/kyc',
           { idImage: reader.result },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
         );
         setKycStatus('pending');
         setMessage('KYC document submitted! Pending verification.');
@@ -112,6 +112,8 @@ const Profile = () => {
               <img
                 src={profileImage || generateAvatar(`${user?.firstName} ${user?.lastName}`)}
                 alt="Profile"
+                loading="eager"
+                fetchPriority="high"
                 style={{
                   width: '100px',
                   height: '100px',

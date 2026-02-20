@@ -27,7 +27,8 @@ const BillPayments = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('https://full-bank-app.onrender.com/api/bills', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
       setHistory(response.data.history || [
         { category: 'electricity', provider: 'NEPA', amount: 5000, date: '2025-08-10' },
@@ -49,7 +50,7 @@ const BillPayments = () => {
       const token = localStorage.getItem('token');
       await axios.post('https://full-bank-app.onrender.com/api/bills', 
         { category, provider, amount, phone }, 
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
       );
       setMessage('Bill payment successful!');
       setHistory([{ category, provider, amount: parseInt(amount), date: new Date().toISOString().slice(0, 10) }, ...history]);

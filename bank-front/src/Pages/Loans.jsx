@@ -41,7 +41,8 @@ const Loans = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(API_ENDPOINTS.LOANS, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000 // 8 second timeout - balance between speed and reliability
       });
       setLoans(response.data.loans || []);
     } catch (error) {
@@ -94,7 +95,10 @@ const Loans = () => {
           duration: durationValue,
           reason: applyReason
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000
+        }
       );
       setApplyMessage('Loan application submitted successfully');
       setTimeout(async () => {
@@ -103,7 +107,8 @@ const Loans = () => {
         try {
           const token = localStorage.getItem('token');
           const response = await axios.get(API_ENDPOINTS.DASHBOARD, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000
           });
           if (response.data.user) {
             setUser(response.data.user);
@@ -159,7 +164,10 @@ const Loans = () => {
       const response = await axios.post(
         API_ENDPOINTS.LOAN_REPAY(selectedApplication._id),
         { amount: repayValue },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000
+        }
       );
 
       console.log('📤 Repayment response:', { 
@@ -175,7 +183,8 @@ const Loans = () => {
         try {
           const token = localStorage.getItem('token');
           const response = await axios.get(API_ENDPOINTS.DASHBOARD, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000
           });
           if (response.data.user) {
             setUser(response.data.user);
@@ -201,12 +210,16 @@ const Loans = () => {
       const response = await axios.post(
         API_ENDPOINTS.LOAN_APPROVE(applicationId),
         { status: 'approved' },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000
+        }
       );
 
       // Refresh user data
       const dashboardResponse = await axios.get(API_ENDPOINTS.DASHBOARD, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000
       });
       if (dashboardResponse.data.user) {
         setUser(dashboardResponse.data.user);
@@ -308,10 +321,12 @@ const Loans = () => {
       {loanApplications.length > 0 && (
         <div className="mb-5">
           <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
-            My Applications
+            My Applications {loanApplications.filter(app => app.status === 'repaid').length > 0 && `(${loanApplications.filter(app => app.status !== 'repaid').length} Active)`}
           </h5>
           <div className="row g-4">
-            {loanApplications.map((application) => {
+            {loanApplications
+            .filter(app => app.status !== 'repaid')  // Hide fully repaid loans
+            .map((application) => {
               const remainingBalance = application.amount - (application.totalRepaid || 0);
               const progressPercent = application.totalRepaid ? (application.totalRepaid / application.amount) * 100 : 0;
               const statusColor = 
@@ -549,6 +564,9 @@ const Loans = () => {
                 {applyMessage}
               </div>
             )}
+            
+            {/* Allocate space for message to prevent CLS */}
+            {!applyMessage && <div style={{ minHeight: '48px', marginBottom: '16px' }} />}
 
             <form onSubmit={submitLoanApplication}>
               <div className="mb-3">
@@ -739,6 +757,9 @@ const Loans = () => {
                 {repayMessage}
               </div>
             )}
+            
+            {/* Allocate space for message to prevent CLS */}
+            {!repayMessage && <div style={{ minHeight: '48px', marginBottom: '16px' }} />}
 
             <div className="mb-4 p-3" style={{ background: isDarkMode ? '#374151' : '#F3F4F6', borderRadius: '12px' }}>
               <div className="row g-3 mb-3">

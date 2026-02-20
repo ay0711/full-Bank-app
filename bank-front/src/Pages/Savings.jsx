@@ -18,7 +18,8 @@ const Savings = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('https://full-bank-app.onrender.com/api/banking/savings', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 8000
       });
       setSavings(response.data.savings || []);
     } catch (error) {
@@ -45,7 +46,8 @@ const Savings = () => {
             category: 'Personal'
           }, 
           {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 8000
           }
         );
         setNewGoal({ name: '', goal: '', dueDate: '' });
