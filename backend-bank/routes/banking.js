@@ -656,11 +656,10 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
         // Record transaction if transactions array exists
         if (!user.transactions) user.transactions = [];
         user.transactions.push({
-            type: 'Loan Repayment',
+            type: 'debit',
             amount: amount,
             date: new Date(),
-            description: `Repayment for ${application.loanName} loan`,
-            status: 'completed'
+            description: `Repayment for ${application.loanName} loan`
         });
 
         // Add notification
