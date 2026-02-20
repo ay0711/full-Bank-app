@@ -173,6 +173,7 @@ const Loans = () => {
           });
           if (response.data.user) {
             setUser(response.data.user);
+            console.log('🔄 User refreshed. Loans:', response.data.user.loanApplications.map(l => ({ name: l.loanName, status: l.status, paid: l.totalRepaid, total: l.amount })));
           }
         } catch (error) {
           console.error('Error refreshing user data:', error);
@@ -371,7 +372,7 @@ const Loans = () => {
                       </div>
                     </div>
 
-                    {application.status === 'approved' && (
+                    {(application.status === 'approved' || application.status === 'partial-repayment') && (
                       <>
                         <div className="mb-3">
                           <div className="small d-flex justify-content-between mb-2" style={{ color: COLORS.lightText }}>
