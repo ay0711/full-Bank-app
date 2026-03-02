@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AppProvider } from './context/AppContext';
 import BackendLoader from './components/BackendLoader';
 import Signup from './Pages/Signup';
@@ -101,6 +103,8 @@ function App() {
         <Route path="/support" element={<Support />} />
       </Routes>
       <AIAssistant />
+      <Analytics />
+      <SpeedInsights />
     </div>
   );
 }
