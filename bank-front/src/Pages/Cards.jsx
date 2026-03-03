@@ -453,7 +453,11 @@ const Cards = () => {
         onClose={() => { setShowDeleteConfirm(false); setCardToDelete(null); }}
         onConfirm={confirmDelete}
         title="Delete Card"
-        
+        message="Are you sure you want to delete this card? This action cannot be undone."
+        confirmText="Delete"
+        confirmColor="#EF4444"
+        isDarkMode={isDarkMode}
+      />
 
       {/* Card Details Modal */}
       {showDetailsModal && selectedCard && (
