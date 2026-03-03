@@ -23,6 +23,7 @@ const Loans = () => {
   const [creditScore, setCreditScore] = useState(500);
   const [loanLimit, setLoanLimit] = useState(50000);
   const [hasActiveLoan, setHasActiveLoan] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(null);
   const { isDarkMode, user, setUser } = useAppContext();
 
   useEffect(() => {
@@ -193,6 +194,35 @@ const Loans = () => {
       setRepayMessage(error.response?.data?.message || 'Repayment failed');
     } finally {
       setRepayLoading(false);
+    }
+  };
+
+  const deleteLoanApplication = async (applicationId) => {
+    if (!confirm('Are you sure you want to delete this loan application?')) {
+      return;
+    }
+
+    setDeleteLoading(applicationId);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(
+        `${API_ENDPOINTS.LOANS}/${applicationId}`,
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 }
+      );
+      
+      // Refresh user data
+      const response = await axios.get(API_ENDPOINTS.DASHBOARD, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000
+      });
+      if (response.data.user) {
+        setUser(response.data.user);
+        setLoanApplications(response.data.user.loanApplications || []);
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to delete application');
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
@@ -709,17 +739,55 @@ const Loans = () => {
                       )}
 
                       {app.status === 'pending' && (
-                        <div style={{
-                          background: '#FEF3C7',
-                          color: '#92400E',
-                          borderRadius: '12px',
-                          padding: '12px',
-                          textAlign: 'center',
-                          fontWeight: 600,
-                          fontSize: '0.85rem'
-                        }}>
-                          ⏱ Under Review
-                        </div>
+                        <>
+                          <div style={{
+                            background: '#FEF3C7',
+                            color: '#92400E',
+                            borderRadius: '12px',
+                            padding: '12px',
+                            textAlign: 'center',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            marginBottom: '12px'
+                          }}>
+                            ⏱ Under Review
+                          </div>
+                          <button
+                            className="btn w-100 fw-semibold"
+                            style={{
+                              background: deleteLoading === app._id ? '#94A3B8' : '#EF4444',
+                              color: '#FFFFFF',
+                              borderRadius: '12px',
+                              border: 'none',
+                              padding: '11px',
+                              fontSize: '0.9rem',
+                              cursor: deleteLoading === app._id ? 'not-allowed' : 'pointer'
+                            }}
+                            onClick={() => deleteLoanApplication(app._id)}
+                            disabled={deleteLoading === app._id}
+                            onMouseEnter={(e) => {
+                              if (deleteLoading !== app._id) {
+                                e.currentTarget.style.background = '#DC2626';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (deleteLoading !== app._id) {
+                                e.currentTarget.style.background = '#EF4444';
+                              }
+                            }}
+                          >
+                            {deleteLoading === app._id ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-trash me-2"></i>Delete Application
+                              </>
+                            )}
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
