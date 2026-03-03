@@ -1195,6 +1195,34 @@
   }
 }
 
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  .auth-background,
+  .floating-shapes,
+  .auth-gradient-blob,
+  .card-decor,
+  .logo-glow {
+    display: none !important;
+  }
+
+  .auth-content {
+    gap: 16px;
+  }
+
+  .auth-card,
+  .auth-card-3d,
+  .btn-submit-custom,
+  .theme-toggle-btn,
+  .feature-item {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .auth-features {
+    display: none;
+  }
+}
+
 /* ============================================
    ACCESSIBILITY
    ============================================ */
@@ -1207,6 +1235,30 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+html.lite-mode .auth-background,
+html.lite-mode .floating-shapes,
+html.lite-mode .auth-gradient-blob,
+html.lite-mode .card-decor,
+html.lite-mode .logo-glow,
+html.lite-mode .auth-features {
+  display: none !important;
+}
+
+html.lite-mode .auth-content {
+  gap: 16px;
+}
+
+html.lite-mode .auth-card,
+html.lite-mode .auth-card-3d,
+html.lite-mode .btn-submit-custom,
+html.lite-mode .theme-toggle-btn,
+html.lite-mode .feature-item,
+html.lite-mode .btn-fingerprint {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
 }
 
 /* ============================================

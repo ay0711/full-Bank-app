@@ -2,8 +2,10 @@ const express = require('express')
 const app = express ()
 require('dotenv').config()
 const cors = require('cors')
+const compression = require('compression')
 const { jsonContentType, notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
+app.use(compression())
 app.use(cors({
     origin: [
         'https://full-bank-app.vercel.app',

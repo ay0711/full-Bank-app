@@ -51,4 +51,6 @@ This is the React frontend for the Full Bank app. It provides authentication, da
 ## Notes
 
 - The API base URL is controlled by VITE_API_URL in .env
+- Vercel cron warm-up endpoint is available at /api/warmup (every 10 minutes)
+- Optional serverless env var: WARMUP_BACKEND_URL (defaults to https://full-bank-app.onrender.com)
 - The .env file is ignored by git; use .env.example as a template

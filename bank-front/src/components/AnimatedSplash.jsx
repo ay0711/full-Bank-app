@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import ayBankLogo from '../../image/ay bank cirlcle.png';
 
 const AnimatedSplash = ({ show, duration = 1200 }) => {
   const [visible, setVisible] = useState(show);
@@ -29,15 +28,22 @@ const AnimatedSplash = ({ show, duration = 1200 }) => {
       transition: 'opacity 0.5s',
       opacity: visible ? 1 : 0
     }}>
-      <img
-        src={ayBankLogo}
-        alt="AY Bank Logo"
-        style={{
-          width: 120,
-          height: 120,
-          animation: 'splash-bounce 1.2s cubic-bezier(.68,-0.55,.27,1.55)'
-        }}
-      />
+      <picture>
+        <source srcSet="/image/ay-bank-circle.avif" type="image/avif" />
+        <source srcSet="/image/ay-bank-circle.webp" type="image/webp" />
+        <img
+          src="/image/ay-bank-circle.png"
+          alt="AY Bank Logo"
+          style={{
+            width: 120,
+            height: 120,
+            animation: 'splash-bounce 1.2s cubic-bezier(.68,-0.55,.27,1.55)'
+          }}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+        />
+      </picture>
       <style>{`
         @keyframes splash-bounce {
           0% { transform: scale(0.7); opacity: 0; }

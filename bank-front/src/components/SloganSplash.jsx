@@ -1,9 +1,12 @@
 import React from 'react';
-import ayBankSlogan from '../../image/ay bank slogan.png';
 
 const SloganSplash = () => (
   <div className="d-flex justify-content-center align-items-center min-vh-100 bg-white">
-    <img src={ayBankSlogan} alt="AY Bank Slogan" style={{ width: 180 }} />
+    <picture>
+      <source srcSet="/image/ay-bank-slogan.avif" type="image/avif" />
+      <source srcSet="/image/ay-bank-slogan.webp" type="image/webp" />
+      <img src="/image/ay-bank-slogan.png" alt="AY Bank Slogan" style={{ width: 180 }} loading="eager" fetchPriority="high" decoding="async" />
+    </picture>
   </div>
 );
 

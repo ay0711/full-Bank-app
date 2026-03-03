@@ -408,6 +408,24 @@
   }
 }
 
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  .loader-background,
+  .loader-blob,
+  .loader-logo-glow {
+    display: none;
+  }
+
+  .loader-content,
+  .loader-logo,
+  .spinner-circle,
+  .loader-status,
+  .progress-fill {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .loader-logo,
@@ -420,4 +438,22 @@
   .loader-info {
     animation: none !important;
   }
+}
+
+html.lite-mode .loader-background,
+html.lite-mode .loader-blob,
+html.lite-mode .loader-logo-glow {
+  display: none !important;
+}
+
+html.lite-mode .loader-content,
+html.lite-mode .loader-logo,
+html.lite-mode .spinner-circle,
+html.lite-mode .loader-status,
+html.lite-mode .progress-fill,
+html.lite-mode .loader-actions,
+html.lite-mode .loader-info {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
 }

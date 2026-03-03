@@ -50,10 +50,13 @@ function App() {
   const [showBackendLoader, setShowBackendLoader] = useState(true);
   const [enableAssistant, setEnableAssistant] = useState(false);
   const [showTelemetry, setShowTelemetry] = useState(false);
+  const [isLikelyMobile, setIsLikelyMobile] = useState(false);
+  const [isLiteMode, setIsLiteMode] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [splashKey, setSplashKey] = useState(0);
   const location = useLocation();
+  const isPublicRoute = PUBLIC_ROUTES.has(location.pathname);
 
   const shouldShowBackendLoader = useMemo(
     () => showBackendLoader && !PUBLIC_ROUTES.has(location.pathname),
@@ -84,10 +87,67 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+
+    const mediaQuery = window.matchMedia('(max-width: 768px), (pointer: coarse)');
+    const updateMobileFlag = (event) => {
+      setIsLikelyMobile(event.matches);
+    };
+
+    setIsLikelyMobile(mediaQuery.matches);
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateMobileFlag);
+      return () => mediaQuery.removeEventListener('change', updateMobileFlag);
+    }
+
+    mediaQuery.addListener(updateMobileFlag);
+    return () => mediaQuery.removeListener(updateMobileFlag);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const nav = window.navigator;
+    const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
+    const hasLowMemory = typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 2;
+    const hasLowCpu = typeof nav.hardwareConcurrency === 'number' && nav.hardwareConcurrency <= 4;
+    const saveDataEnabled = Boolean(connection?.saveData);
+    const slowNetwork = typeof connection?.effectiveType === 'string' && /(^2g$|^slow-2g$)/i.test(connection.effectiveType);
+    const prefersReducedMotion = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
+
+    const lite = hasLowMemory || hasLowCpu || saveDataEnabled || slowNetwork || prefersReducedMotion;
+    setIsLiteMode(lite);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const root = document.documentElement;
+    if (isLiteMode) {
+      root.classList.add('lite-mode');
+    } else {
+      root.classList.remove('lite-mode');
+    }
+
+    return () => {
+      root.classList.remove('lite-mode');
+    };
+  }, [isLiteMode]);
+
+  useEffect(() => {
+    if (isPublicRoute || isLiteMode) {
+      setEnableAssistant(false);
+      return;
+    }
+
     const usesIdleCallback = typeof window.requestIdleCallback === 'function';
+    const delay = isLikelyMobile ? 5000 : 2000;
     const idleHandle = usesIdleCallback
-      ? window.requestIdleCallback(() => setEnableAssistant(true), { timeout: 2000 })
-      : setTimeout(() => setEnableAssistant(true), 2000);
+      ? window.requestIdleCallback(() => setEnableAssistant(true), { timeout: delay })
+      : setTimeout(() => setEnableAssistant(true), delay);
 
     return () => {
       if (usesIdleCallback && typeof window.cancelIdleCallback === 'function') {
@@ -96,7 +156,7 @@ function App() {
         clearTimeout(idleHandle);
       }
     };
-  }, []);
+  }, [isLikelyMobile, isPublicRoute, isLiteMode]);
 
   useEffect(() => {
     const usesIdleCallback = typeof window.requestIdleCallback === 'function';
@@ -123,11 +183,13 @@ function App() {
       return;
     }
 
+    if (isLikelyMobile || isLiteMode) return;
+
     setShowSplash(true);
     setSplashKey(prev => prev + 1);
     const timer = setTimeout(() => setShowSplash(false), 700);
     return () => clearTimeout(timer);
-  }, [hasMounted, location.pathname]);
+  }, [hasMounted, isLikelyMobile, isLiteMode, location.pathname]);
 
   return (
     <div className="App">

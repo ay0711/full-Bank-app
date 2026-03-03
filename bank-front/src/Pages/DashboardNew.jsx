@@ -1,16 +1,14 @@
 
-import React, { useState, useEffect, startTransition, useMemo } from 'react';
+import React, { lazy, Suspense, useState, useEffect, startTransition, useRef } from 'react';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
-import ayBankCircle from '../../image/ay bank cirlcle.png';
 import { useNavigate, useLocation } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import '../styles/DashboardNew.css';
 import { formatCurrency, getMaskedCurrency } from '../utils/currencyConverter';
 import { API_ENDPOINTS } from '../utils/api';
-import { 
-  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line
-} from 'recharts';
+
+const DashboardCharts = lazy(() => import('../components/DashboardCharts'));
 
 const COLORS = {
   primary: '#4F46E5',
@@ -29,6 +27,7 @@ const COLORS = {
 const chartColors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 const Dashboard = () => {
+  const chartsTriggerRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
   const [analytics, setAnalytics] = useState({ totalSpent: 0, totalReceived: 0 });
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
@@ -36,6 +35,7 @@ const Dashboard = () => {
   const [transactions, setTransactions] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
   const [expenseData, setExpenseData] = useState([]);
+  const [shouldRenderCharts, setShouldRenderCharts] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [quickTransferUsers, setQuickTransferUsers] = useState([]);
@@ -174,6 +174,32 @@ const Dashboard = () => {
     fetchNonCritical();
   }, []);
 
+  useEffect(() => {
+    const target = chartsTriggerRef.current;
+
+    if (!target || shouldRenderCharts) return;
+
+    if (typeof window === 'undefined' || typeof window.IntersectionObserver === 'undefined') {
+      setShouldRenderCharts(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting) {
+          setShouldRenderCharts(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px 0px', threshold: 0.05 }
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [shouldRenderCharts]);
+
   if (!user) {
     return (
       <div className={`min-vh-100 ${isDarkMode ? 'bg-dark' : 'bg-light'} d-flex justify-content-center align-items-center`}>
@@ -285,23 +311,6 @@ const Dashboard = () => {
     </div>
   );
 
-  const ChartCard = ({ title, children }) => (
-    <div
-      style={{
-        background: isDarkMode ? '#1F2937' : COLORS.card,
-        boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
-        padding: '28px',
-        borderRadius: '16px',
-        border: isDarkMode ? '1px solid #374151' : 'none'
-      }}
-    >
-      <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
-        {title}
-      </h5>
-      {children}
-    </div>
-  );
-
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: isDarkMode ? '#111827' : '#F9FAFB' }}>
       {/* Sidebar */}
@@ -320,13 +329,18 @@ const Dashboard = () => {
       >
         {/* Logo */}
         <div className="d-flex align-items-center mb-3 px-4">
-          <img
-            src={ayBankCircle}
-            alt="BankDash"
-            loading="eager"
-            fetchPriority="high"
-            style={{ width: 42, height: 42, marginRight: 12, borderRadius: '10px' }}
-          />
+          <picture style={{ marginRight: 12 }}>
+            <source srcSet="/image/ay-bank-circle.avif" type="image/avif" />
+            <source srcSet="/image/ay-bank-circle.webp" type="image/webp" />
+            <img
+              src="/image/ay-bank-circle.png"
+              alt="BankDash"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              style={{ width: 42, height: 42, borderRadius: '10px' }}
+            />
+          </picture>
           <h5 className="mb-0 fw-bold" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText, fontSize: '1.25rem' }}>
             BankDash
           </h5>
@@ -708,106 +722,28 @@ const Dashboard = () => {
         </div>
 
         {/* Charts Section */}
-        <div className="row g-4 mb-5">
-          {/* Weekly Activity Chart */}
-          <div className="col-lg-8">
-            <ChartCard title="Weekly Activity">
-              {weeklyData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke={isDarkMode ? '#374151' : '#E5E7EB'}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="day"
-                      stroke={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                      style={{ fontSize: '0.875rem' }}
-                    />
-                    <YAxis
-                      stroke={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                      style={{ fontSize: '0.875rem' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: isDarkMode ? '#374151' : COLORS.card,
-                        borderRadius: '12px',
-                        border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
-                        color: isDarkMode ? '#F3F4F6' : COLORS.darkText
-                      }}
-                    />
-                    <Legend
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      iconType="circle"
-                    />
-                    <Bar dataKey="Deposit" fill={COLORS.primary} radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="Withdraw" fill={COLORS.success} radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center py-5">
+        <div ref={chartsTriggerRef} className="row g-4 mb-5">
+          {shouldRenderCharts ? (
+            <Suspense
+              fallback={
+                <div className="col-12 text-center py-5">
                   <div className="spinner-border text-primary" />
                 </div>
-              )}
-            </ChartCard>
-          </div>
-
-          {/* Expense Statistics */}
-          <div className="col-lg-4">
-            <ChartCard title="Expense Statistics">
-              {expenseData.length > 0 ? (
-                <>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                      <Pie
-                        data={expenseData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={110}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {expenseData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-4">
-                    {expenseData.map((item, idx) => (
-                      <div key={idx} className="d-flex align-items-center justify-content-between mb-3">
-                        <div className="d-flex align-items-center gap-2">
-                          <span
-                            style={{
-                              width: 12,
-                              height: 12,
-                              borderRadius: '50%',
-                              background: chartColors[idx % chartColors.length]
-                            }}
-                          ></span>
-                          <span style={{ color: isDarkMode ? '#D1D5DB' : COLORS.lightText, fontSize: '0.875rem' }}>
-                            {item.name}
-                          </span>
-                        </div>
-                        <span
-                          className="fw-semibold"
-                          style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText, fontSize: '0.875rem' }}
-                        >
-                          {item.value}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-5">
-                  <div className="spinner-border text-primary" />
-                </div>
-              )}
-            </ChartCard>
-          </div>
+              }
+            >
+              <DashboardCharts
+                weeklyData={weeklyData}
+                expenseData={expenseData}
+                isDarkMode={isDarkMode}
+                colors={COLORS}
+                chartColors={chartColors}
+              />
+            </Suspense>
+          ) : (
+            <div className="col-12 text-center py-5">
+              <div className="spinner-border text-primary" />
+            </div>
+          )}
         </div>
 
         {/* Quick Transfer & Recent Transactions */}

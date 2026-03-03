@@ -5,7 +5,6 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
-import ayBankCircle from '../../image/ay bank cirlcle.png';
 import '../styles/AuthStyles.css';
 
 const Signin = () => {
@@ -102,7 +101,11 @@ const Signin = () => {
         {/* Header with logo and theme toggle */}
         <div className="auth-header">
           <div className="logo-container">
-            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" loading="eager" fetchPriority="high" decoding="async" />
+            <picture>
+              <source srcSet="/image/ay-bank-circle.avif" type="image/avif" />
+              <source srcSet="/image/ay-bank-circle.webp" type="image/webp" />
+              <img src="/image/ay-bank-circle.png" alt="AY Bank Logo" className="auth-logo" loading="eager" fetchPriority="high" decoding="async" />
+            </picture>
             <div className="logo-glow"></div>
           </div>
           <button 
