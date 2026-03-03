@@ -589,11 +589,7 @@ const Cards = () => {
           </div>
         </div>
       )}
-message="Are you sure you want to delete this card? This action cannot be undone."
-        confirmText="Delete"
-        confirmColor="#EF4444"
-        isDarkMode={isDarkMode}
-      />    </PageLayout>
+    </PageLayout>
   );
 };
 

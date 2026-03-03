@@ -546,6 +546,7 @@ const Me = () => {
               name: 'Standard',
               icon: '⭐',
               price: '₦0',
+              priceNumeric: 0,
               period: 'Forever Free',
               features: [
                 'Basic account features',
@@ -563,6 +564,7 @@ const Me = () => {
               name: 'Premium',
               icon: '💎',
               price: '₦4,999',
+              priceNumeric: 4999,
               period: 'one-time',
               features: [
                 'All Standard features',
@@ -581,6 +583,7 @@ const Me = () => {
               name: 'Business',
               icon: '👑',
               price: '₦9,999',
+              priceNumeric: 9999,
               period: 'one-time',
               features: [
                 'All Premium features',
@@ -687,7 +690,7 @@ const Me = () => {
                     }
                   }}
                 >
-                  {plan.isCurrentTier ? 'Current Plan' : 'Upgrade'}
+                  {plan.button}
                 </button>
               </div>
             </div>
@@ -707,11 +710,19 @@ const Me = () => {
             try {
               const plan = pendingUpgrade;
               const token = localStorage.getItem('token');
+              
+              console.log('Sending upgrade request with:', {
+                accountType: plan.tier,
+                endpoint: API_ENDPOINTS.UPGRADE_ACCOUNT
+              });
+              
               const response = await axios.post(
                 API_ENDPOINTS.UPGRADE_ACCOUNT,
                 { accountType: plan.tier },
                 { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
               );
+              
+              console.log('Upgrade successful:', response.data);
               
               // Update user context with new balance and account type
               setUser(response.data.user);
@@ -720,22 +731,27 @@ const Me = () => {
               localStorage.setItem('user', JSON.stringify(response.data.user));
               
               setMessage(
-                `🎉 Successfully upgraded to ${plan.name}! ₦${response.data.upgradeCost?.toLocaleString('en-NG') || plan.price} has been deducted from your balance.`
+                `🎉 Successfully upgraded to ${plan.name}! ₦${response.data.upgradeCost?.toLocaleString('en-NG') || plan.priceNumeric.toLocaleString('en-NG')} has been deducted from your balance.`
               );
               setMessageType('success');
               setTimeout(() => setMessage(''), 6000);
             } catch (error) {
-              const errorMsg = error.response?.data?.message || 'Upgrade failed. Please try again.';
+              console.error('Upgrade error:', {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+              });
+              const errorMsg = error.response?.data?.message || error.message || 'Upgrade failed. Please try again.';
               setMessage(errorMsg);
               setMessageType('error');
-              setTimeout(() => setMessage(''), 5000);
+              setTimeout(() => setMessage(''), 6000);
             }
           }
           setShowUpgradeConfirm(false);
           setPendingUpgrade(null);
         }}
         title="Upgrade Account"
-        message={pendingUpgrade ? `Are you sure you want to upgrade to ${pendingUpgrade.name}?\n\nUpgrade cost: ₦${pendingUpgrade.price}\n\nThis amount will be deducted from your account balance.` : ''}
+        message={pendingUpgrade ? `Are you sure you want to upgrade to ${pendingUpgrade.name}?\n\nUpgrade cost: ₦${pendingUpgrade.priceNumeric.toLocaleString('en-NG')}\n\nThis amount will be deducted from your account balance.` : ''}
         confirmText="Upgrade Now"
         confirmColor="#10B981"
         isDarkMode={isDarkMode}

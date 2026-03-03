@@ -105,7 +105,7 @@ const ForgotPassword = () => {
 
       <div className="auth-content">
         <div className="auth-header">
-          <div className="logo-container animate-bounce-slow">
+          <div className="logo-container">
             <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" loading="lazy" />
             <div className="logo-glow"></div>
           </div>
@@ -124,7 +124,7 @@ const ForgotPassword = () => {
               <div className="auth-card-header">
                 <div className="header-gradient"></div>
                 <div className="header-content">
-                  <div className="header-icon-wrapper animate-float">
+                  <div className="header-icon-wrapper">
                     <i className="fas fa-lock fa-2x"></i>
                   </div>
                   <h2 className="auth-card-title">Reset Password</h2>

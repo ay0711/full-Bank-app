@@ -17,12 +17,20 @@ router.put('/notification/:id/read', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
         if (!user) return res.status(404).json({ message: 'User not found' });
+        
+        // Find and update the notification
         const notification = user.notifications.id(req.params.id);
-        if (!notification) return res.status(404).json({ message: 'Notification not found' });
+        if (!notification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+        
         notification.read = true;
+        user.markModified('notifications');
         await user.save();
+        
         res.json({ success: true });
     } catch (err) {
+        console.error('Error marking notification as read:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -32,12 +40,21 @@ router.delete('/notification/:id', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
         if (!user) return res.status(404).json({ message: 'User not found' });
-        const notification = user.notifications.id(req.params.id);
-        if (!notification) return res.status(404).json({ message: 'Notification not found' });
-        notification.deleteOne();
-        await user.save();
-        res.json({ success: true });
+        
+        // Use pull to properly remove the subdocument
+        const result = await User.findByIdAndUpdate(
+            req.user._id,
+            { $pull: { notifications: { _id: req.params.id } } },
+            { new: true }
+        );
+        
+        if (!result) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+        
+        res.json({ success: true, message: 'Notification deleted' });
     } catch (err) {
+        console.error('Error deleting notification:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -396,8 +413,10 @@ router.get('/users', authenticateToken, async (req, res) => {
 router.post('/upgrade-account', authenticateToken, async (req, res) => {
     try {
         const { accountType } = req.body;
+        console.log('Upgrade request received with accountType:', accountType);
         
-        if (!['Standard', 'Premium', 'Business'].includes(accountType)) {
+        if (!accountType || !['Standard', 'Premium', 'Business'].includes(accountType)) {
+            console.log('Invalid account type:', accountType);
             return res.status(400).json({ message: 'Invalid account type' });
         }
         
@@ -407,12 +426,17 @@ router.post('/upgrade-account', authenticateToken, async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
         
+        console.log('User current account type:', user.accountType || 'Standard');
+        
         // Check if already on this tier or higher
         const tierHierarchy = { 'Standard': 0, 'Premium': 1, 'Business': 2 };
         const currentTier = tierHierarchy[user.accountType || 'Standard'];
         const requestedTier = tierHierarchy[accountType];
         
+        console.log('Current tier:', currentTier, 'Requested tier:', requestedTier);
+        
         if (requestedTier <= currentTier) {
+            console.log('User already on this tier or higher');
             return res.status(400).json({ 
                 message: 'You are already on this tier or higher' 
             });
@@ -425,20 +449,23 @@ router.post('/upgrade-account', authenticateToken, async (req, res) => {
         };
         
         let upgradeCost = 0;
-        if (accountType === 'Premium' && user.accountType === 'Standard') {
+        if (accountType === 'Premium' && (user.accountType === 'Standard' || !user.accountType)) {
             upgradeCost = upgradeCosts.Premium;
         } else if (accountType === 'Business') {
             // If upgrading from Standard to Business, charge Business price
             // If upgrading from Premium to Business, charge difference
-            if (user.accountType === 'Standard') {
+            if (user.accountType === 'Standard' || !user.accountType) {
                 upgradeCost = upgradeCosts.Business;
             } else if (user.accountType === 'Premium') {
                 upgradeCost = upgradeCosts.Business - upgradeCosts.Premium; // 5000
             }
         }
         
+        console.log('Upgrade cost:', upgradeCost, 'User balance:', user.accountBalance);
+        
         // Check if user has sufficient balance
         if (upgradeCost > 0 && user.accountBalance < upgradeCost) {
+            console.log('Insufficient balance for upgrade');
             return res.status(400).json({ 
                 message: `Insufficient balance. ₦${upgradeCost.toLocaleString('en-NG')} required for upgrade.`,
                 required: upgradeCost,
@@ -451,16 +478,21 @@ router.post('/upgrade-account', authenticateToken, async (req, res) => {
             user.accountBalance -= upgradeCost;
             
             // Add transaction record
+            if (!user.transactions) user.transactions = [];
             user.transactions.push({
                 type: 'debit',
                 amount: upgradeCost,
                 description: `Account upgrade to ${accountType}`,
+                category: 'Upgrade',
                 date: new Date()
             });
+            user.markModified('transactions');
         }
         
         user.accountType = accountType;
         await user.save();
+        
+        console.log('Account upgraded successfully to:', accountType);
         
         res.json({ 
             message: `Account upgraded successfully to ${accountType}!`,
@@ -477,6 +509,7 @@ router.post('/upgrade-account', authenticateToken, async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Upgrade account error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });

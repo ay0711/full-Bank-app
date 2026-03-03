@@ -28,8 +28,9 @@ const Notification = () => {
       // Add default type and timestamp if not present
       const mappedNotifs = notifs.map((n, index) => ({
         ...n,
+        _id: n._id || `notif-${index}-${Date.now()}`, // Explicity preserve MongoDB _id
+        id: n._id, // Also set id to _id for consistency
         type: n.type || 'info',
-        id: n._id || `notif-${index}-${Date.now()}`,
         timestamp: n.createdAt ? formatTime(new Date(n.createdAt)) : 'Just now'
       }));
       
@@ -66,29 +67,37 @@ const Notification = () => {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      // Update state - match by both _id and id for compatibility
       setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, read: true } : n
+        (n._id === id || n.id === id) ? { ...n, read: true } : n
       ));
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      // Still update UI even if backend call fails
+      setNotifications(notifications.map(n => 
+        (n._id === id || n.id === id) ? { ...n, read: true } : n
+      ));
     }
   };
 
   const deleteNotification = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(
+      console.log('Deleting notification with id:', id);
+      const response = await axios.delete(
         `${API_ENDPOINTS.NOTIFICATIONS}/${id}`,
         { 
           headers: { Authorization: `Bearer ${token}` },
           timeout: 8000
         }
       );
-      setNotifications(notifications.filter(n => n.id !== id));
+      console.log('Delete response:', response.data);
+      // Remove from UI - filter by both _id and id for compatibility
+      setNotifications(notifications.filter(n => n._id !== id && n.id !== id));
     } catch (error) {
       console.error('Error deleting notification:', error);
       // Still remove from UI even if backend delete fails
-      setNotifications(notifications.filter(n => n.id !== id));
+      setNotifications(notifications.filter(n => n._id !== id && n.id !== id));
     }
   };
 
