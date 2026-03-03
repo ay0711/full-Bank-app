@@ -17,6 +17,45 @@ const Me = () => {
   const [uploading, setUploading] = useState(false);
   const [phoneOTP, setPhoneOTP] = useState('');
   const [phoneVerificationLoading, setPhoneVerificationLoading] = useState(false);
+  
+  // Function to determine the current account tier
+  const getCurrentAccountTier = (userData) => {
+    const tier = userData?.accountType?.trim() || 'Standard';
+    // Ensure it's one of the valid tiers
+    const validTiers = ['Standard', 'Premium', 'Business'];
+    return validTiers.includes(tier) ? tier : 'Standard';
+  };
+
+  // Function to sync user profile from backend if accountType is missing or invalid
+  const syncUserProfileFromBackend = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        API_ENDPOINTS.DASHBOARD,
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
+      );
+
+      if (response.data.user) {
+        console.log('🔄 Synced user profile from backend:', {
+          accountType: response.data.user.accountType,
+          accountBalance: response.data.user.accountBalance
+        });
+
+        setUser(response.data.user);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+    } catch (error) {
+      console.error('❌ Error syncing user profile:', error.message);
+    }
+  };
+
+  // Sync user profile on mount if accountType is missing or invalid
+  useEffect(() => {
+    if (!user?.accountType || !['Standard', 'Premium', 'Business'].includes(user.accountType?.trim())) {
+      console.log('⚠️ Invalid or missing accountType, syncing from backend...');
+      syncUserProfileFromBackend();
+    }
+  }, []);
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -526,7 +565,7 @@ const Me = () => {
             <div>
               <p className="mb-1 small" style={{ color: COLORS.lightText }}>Account Type</p>
               <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
-                {user?.accountType || 'Standard'}
+                {getCurrentAccountTier(user)}
               </p>
             </div>
           </div>
@@ -557,7 +596,7 @@ const Me = () => {
               ],
               button: 'Current Plan',
               buttonColor: COLORS.primary,
-              isCurrentTier: !user?.accountType || user?.accountType === 'Standard'
+              isCurrentTier: getCurrentAccountTier(user) === 'Standard'
             },
             {
               tier: 'Premium',
@@ -576,7 +615,7 @@ const Me = () => {
               ],
               button: 'Upgrade Now',
               buttonColor: COLORS.success,
-              isCurrentTier: user?.accountType === 'Premium'
+              isCurrentTier: getCurrentAccountTier(user) === 'Premium'
             },
             {
               tier: 'Business',
@@ -596,7 +635,7 @@ const Me = () => {
               ],
               button: 'Get Business',
               buttonColor: '#FFD700',
-              isCurrentTier: user?.accountType === 'Business'
+              isCurrentTier: getCurrentAccountTier(user) === 'Business'
             }
           ].map((plan) => (
             <div key={plan.tier} className="col-lg-4">
@@ -742,6 +781,11 @@ const Me = () => {
               setUser(response.data.user);
               
               // Update localStorage
+              console.log('📋 Upgrade response details:', {
+                newAccountType: response.data.user.accountType,
+                newBalance: response.data.user.accountBalance,
+                upgradeCost: response.data.upgradeCost
+              });
               localStorage.setItem('user', JSON.stringify(response.data.user));
               
               setMessage(
