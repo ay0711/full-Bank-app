@@ -451,6 +451,53 @@ const Me = () => {
             </div>
 
             <div className="mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <p className="mb-0 small" style={{ color: COLORS.lightText }}>Phone Number</p>
+                {user?.phoneVerified && (
+                  <span style={{ fontSize: '0.75rem', color: COLORS.success }}>
+                    <i className="fas fa-check-circle me-1"></i>Verified
+                  </span>
+                )}
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                  {user?.phoneNumber || 'Not set'}
+                </p>
+                {!user?.phoneNumber || !user?.phoneVerified ? (
+                  <button
+                    onClick={() => {
+                      setProfileData({
+                        ...profileData,
+                        phoneNumber: user?.phoneNumber || ''
+                      });
+                      setShowEditProfile(true);
+                    }}
+                    style={{
+                      background: COLORS.primary,
+                      border: 'none',
+                      color: 'white',
+                      padding: '4px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#3730A3'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = COLORS.primary}
+                  >
+                    {!user?.phoneNumber ? 'Add' : 'Verify'}
+                  </button>
+                ) : null}
+              </div>
+              {!user?.phoneNumber && (
+                <p className="small mb-0 mt-1" style={{ color: COLORS.warning, fontSize: '0.75rem' }}>
+                  <i className="fas fa-exclamation-triangle me-1"></i>
+                  Add phone number to enable SMS notifications
+                </p>
+              )}
+            </div>
+
+            <div className="mb-4">
               <p className="mb-1 small" style={{ color: COLORS.lightText }}>Account Number</p>
               <div className="d-flex align-items-center gap-2">
                 <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>

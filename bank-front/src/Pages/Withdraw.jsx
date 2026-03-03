@@ -8,6 +8,7 @@ import axios from 'axios';
 const Withdraw = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const { isDarkMode, user, setUser } = useAppContext();
 
   const validationSchema = Yup.object({
@@ -16,7 +17,14 @@ const Withdraw = () => {
       .required('Amount is required')
       .min(1000, 'Minimum withdrawal is ₦1,000')
       .max(user?.accountBalance || 0, 'Insufficient balance'),
-    accountType: Yup.string().required('Please select withdrawal type')
+    accountType: Yup.string().required('Please select withdrawal type'),
+    phoneNumber: Yup.string().when('accountType', {
+      is: 'mobile',
+      then: (schema) => schema
+        .required('Phone number is required for mobile withdrawal')
+        .matches(/^(\+234|0)[789]\d{9}$/, 'Invalid Nigerian phone number'),
+      otherwise: (schema) => schema.notRequired()
+    })
   });
 
   const handleWithdraw = async (values, { resetForm }) => {
@@ -85,7 +93,8 @@ const Withdraw = () => {
             <Formik
               initialValues={{
                 amount: '',
-                accountType: 'bank'
+                accountType: 'bank',
+                phoneNumber: user?.phoneNumber || ''
               }}
               validationSchema={validationSchema}
               onSubmit={handleWithdraw}
@@ -97,14 +106,14 @@ const Withdraw = () => {
                       Withdrawal Type
                     </label>
                     <div className="d-flex gap-2 flex-wrap">
-                      {['bank', 'atm'].map((type) => (
-                        <label key={type} style={{ cursor: 'pointer', flex: '1 1 120px', minWidth: '100px' }}>
+                      {['bank', 'atm', 'mobile'].map((type) => (
+                        <label key={type} style={{ cursor: 'pointer', flex: '1 1 100px', minWidth: '90px' }}>
                           <div
                             style={{
                               background: values.accountType === type ? COLORS.primary : (isDarkMode ? '#374151' : COLORS.light),
                               border: values.accountType === type ? `2px solid ${COLORS.primary}` : 'none',
                               borderRadius: '12px',
-                              padding: '12px',
+                              padding: '12px 8px',
                               textAlign: 'center',
                               cursor: 'pointer',
                               transition: 'all 0.3s ease'
@@ -112,9 +121,12 @@ const Withdraw = () => {
                           >
                             <p
                               className="small fw-semibold mb-0"
-                              style={{ color: values.accountType === type ? 'white' : (isDarkMode ? '#D1D5DB' : COLORS.darkText) }}
+                              style={{ 
+                                color: values.accountType === type ? 'white' : (isDarkMode ? '#D1D5DB' : COLORS.darkText),
+                                fontSize: 'clamp(0.7rem, 1.8vw, 0.875rem)'
+                              }}
                             >
-                              {type === 'bank' ? '🏦 Bank Transfer' : '🏧 ATM'}
+                              {type === 'bank' ? '🏦 Bank' : type === 'atm' ? '🏧 ATM' : '📱 Mobile'}
                             </p>
                           </div>
                           <Field
@@ -132,6 +144,37 @@ const Withdraw = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Phone Number Field for Mobile Withdrawal */}
+                  {values.accountType === 'mobile' && (
+                    <div className="mb-4">
+                      <label htmlFor="phoneNumber" className="small fw-semibold mb-2 d-block" style={{ color: COLORS.lightText }}>
+                        Mobile Money Number *
+                      </label>
+                      <Field
+                        id="phoneNumber"
+                        type="tel"
+                        name="phoneNumber"
+                        className="form-control"
+                        placeholder="e.g., 08012345678"
+                        style={{
+                          background: isDarkMode ? '#374151' : COLORS.light,
+                          border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+                          borderRadius: '12px',
+                          color: isDarkMode ? '#F3F4F6' : COLORS.darkText,
+                          padding: '12px 16px'
+                        }}
+                      />
+                      <small style={{ color: COLORS.lightText }} className="d-block mt-2">
+                        Supports Opay, PalmPay, Kuda, etc.
+                      </small>
+                      {errors.phoneNumber && touched.phoneNumber && (
+                        <div className="small mt-2" style={{ color: COLORS.danger }}>
+                          {errors.phoneNumber}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mb-4">
                     <label htmlFor="withdraw-amount" className="small fw-semibold mb-2 d-block" style={{ color: COLORS.lightText }}>

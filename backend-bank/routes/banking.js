@@ -4,6 +4,22 @@ const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 const { sendTransactionEmail } = require('../utils/emailService');
 
+// Helper function to categorize transactions
+function categorizeTransaction(description) {
+    const desc = description.toLowerCase();
+    if (desc.includes('food') || desc.includes('restaurant') || desc.includes('dining')) return 'Food & Dining';
+    if (desc.includes('shop') || desc.includes('store') || desc.includes('purchase')) return 'Shopping';
+    if (desc.includes('transport') || desc.includes('uber') || desc.includes('taxi') || desc.includes('fuel')) return 'Transportation';
+    if (desc.includes('bill') || desc.includes('utility') || desc.includes('electricity') || desc.includes('water')) return 'Bills & Utilities';
+    if (desc.includes('entertainment') || desc.includes('movie') || desc.includes('game')) return 'Entertainment';
+    if (desc.includes('health') || desc.includes('hospital') || desc.includes('medical')) return 'Healthcare';
+    if (desc.includes('education') || desc.includes('school') || desc.includes('course')) return 'Education';
+    if (desc.includes('transfer')) return 'Transfer';
+    if (desc.includes('loan')) return 'Loan';
+    if (desc.includes('withdraw')) return 'Withdrawal';
+    return 'Others';
+}
+
 // Get user dashboard data
 router.get('/dashboard', authenticateToken, async (req, res) => {
     try {
@@ -130,6 +146,7 @@ router.post('/transfer', authenticateToken, async (req, res) => {
             amount: amount,
             description: description || `Transfer to ${recipient.firstName} ${recipient.lastName}`,
             recipientAccountNumber: recipientAccountNumber,
+            category: 'Transfer',
             date: new Date()
         };
 
@@ -138,6 +155,7 @@ router.post('/transfer', authenticateToken, async (req, res) => {
             amount: amount,
             description: description || `Transfer from ${sender.firstName} ${sender.lastName}`,
             senderAccountNumber: sender.accountNumber,
+            category: 'Transfer',
             date: new Date()
         };
 
@@ -423,14 +441,34 @@ router.post('/savings', authenticateToken, async (req, res) => {
 // Get available loans
 router.get('/loans', authenticateToken, async (req, res) => {
     try {
+        const user = await User.findById(req.user._id);
+        
+        // Calculate credit info
+        const creditScore = user?.creditScore || 500;
+        const loanLimit = user?.loanLimit || 50000;
+        
+        // Check for active loans
+        const activeLoans = user?.loanApplications?.filter(loan => 
+            loan.status === 'pending' || 
+            (loan.status === 'approved' && loan.totalRepaid < loan.amount) ||
+            loan.status === 'partial-repayment'
+        ) || [];
+        
         // Return default loan offerings
         const loans = [
-            { id: 1, name: 'Personal Loan', minAmount: 50000, maxAmount: 500000, interestRate: 12, duration: 24, status: 'available' },
-            { id: 2, name: 'Business Loan', minAmount: 100000, maxAmount: 5000000, interestRate: 10, duration: 36, status: 'available' },
-            { id: 3, name: 'Auto Loan', minAmount: 200000, maxAmount: 3000000, interestRate: 8, duration: 60, status: 'available' },
-            { id: 4, name: 'Education Loan', minAmount: 50000, maxAmount: 2000000, interestRate: 9, duration: 48, status: 'available' }
+            { id: 1, name: 'Personal Loan', minAmount: 50000, maxAmount: Math.min(500000, loanLimit), interestRate: 12, duration: 24, status: 'available' },
+            { id: 2, name: 'Business Loan', minAmount: 100000, maxAmount: Math.min(5000000, loanLimit), interestRate: 10, duration: 36, status: 'available' },
+            { id: 3, name: 'Auto Loan', minAmount: 200000, maxAmount: Math.min(3000000, loanLimit), interestRate: 8, duration: 60, status: 'available' },
+            { id: 4, name: 'Education Loan', minAmount: 50000, maxAmount: Math.min(2000000, loanLimit), interestRate: 9, duration: 48, status: 'available' }
         ];
-        res.json({ loans });
+        
+        res.json({ 
+            loans,
+            creditScore,
+            loanLimit,
+            hasActiveLoan: activeLoans.length > 0,
+            activeLoansCount: activeLoans.length
+        });
     } catch (error) {
         res.status(500).json({ message: 'Internal server error' });
     }
@@ -467,6 +505,43 @@ router.post('/loans/apply', authenticateToken, async (req, res) => {
 
         if (!user.loanApplications) user.loanApplications = [];
 
+        // Check for active loans (pending or approved but not fully repaid)
+        const activeLoans = user.loanApplications.filter(loan => 
+            loan.status === 'pending' || 
+            (loan.status === 'approved' && loan.totalRepaid < loan.amount) ||
+            loan.status === 'partial-repayment'
+        );
+
+        if (activeLoans.length > 0) {
+            return res.status(400).json({ 
+                message: 'You have an active loan. Please repay your existing loan before applying for a new one.',
+                activeLoans: activeLoans.length
+            });
+        }
+
+        // Calculate credit score if not set
+        if (!user.creditScore) {
+            user.creditScore = 500; // Default starting score
+        }
+
+        // Calculate loan limit based on credit score, account balance, and transaction history
+        const baseLimit = 50000;
+        const balanceFactor = Math.min(user.accountBalance * 0.5, 500000); // Max 50% of balance, capped at 500k
+        const scoreFactor = ((user.creditScore - 300) / 550) * 500000; // Score contributes up to 500k
+        const calculatedLimit = Math.floor(baseLimit + balanceFactor + scoreFactor);
+        
+        user.loanLimit = Math.min(calculatedLimit, 5000000); // Cap at 5M
+
+        // Check if requested amount exceeds loan limit
+        if (amount > user.loanLimit) {
+            return res.status(400).json({ 
+                message: `Loan amount exceeds your limit of ₦${user.loanLimit.toLocaleString('en-NG')}. Your credit score: ${user.creditScore}/850`,
+                loanLimit: user.loanLimit,
+                creditScore: user.creditScore,
+                requestedAmount: amount
+            });
+        }
+
         const application = {
             loanId: selectedLoan.id,
             loanName: selectedLoan.name,
@@ -480,8 +555,14 @@ router.post('/loans/apply', authenticateToken, async (req, res) => {
         user.markModified('loanApplications');
         await user.save();
 
-        res.status(201).json({ message: 'Loan application submitted', application });
+        res.status(201).json({ 
+            message: 'Loan application submitted successfully',
+            application,
+            creditScore: user.creditScore,
+            loanLimit: user.loanLimit
+        });
     } catch (error) {
+        console.error('Loan application error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
@@ -646,6 +727,17 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
         // Update status if fully repaid
         if (application.totalRepaid >= application.amount) {
             application.status = 'repaid';
+            
+            // Increase credit score on successful loan repayment
+            const currentScore = user.creditScore || 500;
+            const scoreIncrease = Math.min(20, Math.floor(application.amount / 10000)); // Up to 20 points based on loan size
+            user.creditScore = Math.min(850, currentScore + scoreIncrease);
+            
+            // Recalculate loan limit
+            const baseLimit = 50000;
+            const balanceFactor = Math.min(user.accountBalance * 0.5, 500000);
+            const scoreFactor = ((user.creditScore - 300) / 550) * 500000;
+            user.loanLimit = Math.min(Math.floor(baseLimit + balanceFactor + scoreFactor), 5000000);
         } else if (application.totalRepaid > 0) {
             // Mark as partial repayment if not fully repaid
             application.status = 'partial-repayment';
@@ -668,6 +760,7 @@ router.post('/loans/:applicationId/repay', authenticateToken, async (req, res) =
         user.transactions.push({
             type: 'debit',
             amount: amount,
+            category: 'Loan',
             date: new Date(),
             description: `Repayment for ${application.loanName} loan`
         });
@@ -738,11 +831,25 @@ router.post('/loans/:applicationId/approve', authenticateToken, async (req, res)
         application.status = status;
         application.approvedAt = new Date();
 
-        // If approved, add notification
+        // If approved, add loan amount to user balance and create transaction
         if (status === 'approved') {
+            // Add loan amount to user's account balance
+            user.accountBalance += application.amount;
+
+            // Add transaction record
+            if (!user.transactions) user.transactions = [];
+            user.transactions.push({
+                type: 'credit',
+                category: 'Loan',
+                amount: application.amount,
+                description: `${application.loanName} loan disbursement`,
+                date: new Date()
+            });
+
+            // Add notification
             if (!user.notifications) user.notifications = [];
             user.notifications.push({
-                message: `Your ${application.loanName} loan application for ₦${application.amount.toLocaleString()} has been approved!`,
+                message: `Your ${application.loanName} loan of ₦${application.amount.toLocaleString()} has been approved and credited to your account!`,
                 read: false,
                 createdAt: new Date()
             });
@@ -761,12 +868,14 @@ router.post('/loans/:applicationId/approve', authenticateToken, async (req, res)
         // Mark array as modified for Mongoose
         user.markModified('loanApplications');
         user.markModified('notifications');
+        user.markModified('transactions');
 
         await user.save();
 
         res.status(200).json({
             message: `Loan application ${status} successfully`,
-            application
+            application,
+            newBalance: user.accountBalance
         });
     } catch (error) {
         console.error('Loan approval error:', error);

@@ -21,6 +21,9 @@ const Loans = () => {
   const [repayMessage, setRepayMessage] = useState('');
   const [repayLoading, setRepayLoading] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
+  const [creditScore, setCreditScore] = useState(500);
+  const [loanLimit, setLoanLimit] = useState(50000);
+  const [hasActiveLoan, setHasActiveLoan] = useState(false);
   const { isDarkMode, user, setUser } = useAppContext();
 
   useEffect(() => {
@@ -45,6 +48,9 @@ const Loans = () => {
         timeout: 8000 // 8 second timeout - balance between speed and reliability
       });
       setLoans(response.data.loans || []);
+      setCreditScore(response.data.creditScore || 500);
+      setLoanLimit(response.data.loanLimit || 50000);
+      setHasActiveLoan(response.data.hasActiveLoan || false);
     } catch (error) {
       console.error('Error fetching loans:', error);
       // Keep empty array if no data
@@ -233,6 +239,66 @@ const Loans = () => {
 
   return (
     <PageLayout pageTitle="Loans" pageSubtitle="Browse and apply for loans tailored to your needs">
+      {/* Credit Score Card */}
+      <div className="row g-4 mb-4">
+        <div className="col-lg-4">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <div className="small mb-2" style={{ color: COLORS.lightText }}>Credit Score</div>
+            <h2 className="fw-bold mb-2" style={{ color: COLORS.primary }}>{creditScore}/850</h2>
+            <div style={{ height: '8px', background: isDarkMode ? '#374151' : COLORS.light, borderRadius: '999px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: creditScore >= 700 ? COLORS.success : creditScore >= 500 ? COLORS.warning : COLORS.danger, width: `${(creditScore / 850) * 100}%` }}></div>
+            </div>
+            <p className="small mt-2 mb-0" style={{ color: COLORS.lightText }}>
+              {creditScore >= 700 ? 'Excellent' : creditScore >= 500 ? 'Good' : 'Fair'}
+            </p>
+          </div>
+        </div>
+        <div className="col-lg-4">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <div className="small mb-2" style={{ color: COLORS.lightText }}>Your Loan Limit</div>
+            <h2 className="fw-bold mb-2" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>{formatCurrency(loanLimit)}</h2>
+            <p className="small mb-0" style={{ color: COLORS.lightText }}>
+              Maximum amount you can borrow
+            </p>
+          </div>
+        </div>
+        <div className="col-lg-4">
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+          >
+            <div className="small mb-2" style={{ color: COLORS.lightText }}>Loan Status</div>
+            <h4 className="fw-bold mb-2" style={{ color: hasActiveLoan ? COLORS.warning : COLORS.success }}>
+              {hasActiveLoan ? 'Active Loan' : 'No Active Loans'}
+            </h4>
+            <p className="small mb-0" style={{ color: COLORS.lightText }}>
+              {hasActiveLoan ? 'Repay existing loan to apply for new ones' : 'You can apply for a new loan'}
+            </p>
+          </div>
+        </div>
+      </div>
+      
       {/* Loan Offers */}
       <div className="row g-4 mb-5">
         {loading ? (

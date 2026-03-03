@@ -14,6 +14,8 @@ const Cards = () => {
   const [message, setMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
   const { isDarkMode, user, settings } = useAppContext();
   
   // Get currency from settings
@@ -417,6 +419,10 @@ const Cards = () => {
                         borderRadius: '12px',
                         border: 'none'
                       }}
+                      onClick={() => {
+                        setSelectedCard(card);
+                        setShowDetailsModal(true);
+                      }}
                     >
                       <i className="fas fa-info-circle me-1"></i>Details
                     </button>
@@ -447,7 +453,139 @@ const Cards = () => {
         onClose={() => { setShowDeleteConfirm(false); setCardToDelete(null); }}
         onConfirm={confirmDelete}
         title="Delete Card"
-        message="Are you sure you want to delete this card? This action cannot be undone."
+        
+
+      {/* Card Details Modal */}
+      {showDetailsModal && selectedCard && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={() => setShowDetailsModal(false)}
+        >
+          <div
+            style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '20px',
+              padding: '32px',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                Card Details
+              </h5>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="mb-3">
+                <p className="small mb-1" style={{ color: COLORS.lightText }}>Card Number</p>
+                <p className="fw-bold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText, fontSize: '1.2rem', letterSpacing: '2px' }}>
+                  **** **** **** {selectedCard.last4}
+                </p>
+              </div>
+
+              <div className="row g-3 mb-3">
+                <div className="col-6">
+                  <p className="small mb-1" style={{ color: COLORS.lightText }}>Card Holder</p>
+                  <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                    {getUserFullName()}
+                  </p>
+                </div>
+                <div className="col-6">
+                  <p className="small mb-1" style={{ color: COLORS.lightText }}>Expiry Date</p>
+                  <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                    {selectedCard.expiry}
+                  </p>
+                </div>
+              </div>
+
+              <div className="row g-3 mb-3">
+                <div className="col-6">
+                  <p className="small mb-1" style={{ color: COLORS.lightText }}>Card Type</p>
+                  <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                    {selectedCard.type}
+                  </p>
+                </div>
+                <div className="col-6">
+                  <p className="small mb-1" style={{ color: COLORS.lightText }}>Issuer</p>
+                  <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                    {selectedCard.issuer}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <p className="small mb-1" style={{ color: COLORS.lightText }}>Card Balance</p>
+                <p className="fw-bold" style={{ color: COLORS.primary, fontSize: '1.5rem' }}>
+                  {formatCurrency(selectedCard.balance, currency)}
+                </p>
+              </div>
+
+              <div className="mb-3">
+                <p className="small mb-1" style={{ color: COLORS.lightText }}>Status</p>
+                <span
+                  style={{
+                    background: selectedCard.status === 'Active' ? COLORS.success : COLORS.danger,
+                    color: 'white',
+                    padding: '6px 16px',
+                    borderRadius: '999px',
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {selectedCard.status}
+                </span>
+              </div>
+
+              <div className="mb-3">
+                <p className="small mb-1" style={{ color: COLORS.lightText }}>CVV</p>
+                <p className="fw-bold mb-0" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText, fontSize: '1.1rem', letterSpacing: '3px' }}>
+                  ***
+                </p>
+                <p className="small mt-1" style={{ color: COLORS.lightText, fontSize: '0.75rem' }}>
+                  For security reasons, CVV is hidden
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowDetailsModal(false)}
+              className="btn w-100 fw-semibold"
+              style={{
+                background: COLORS.primary,
+                color: 'white',
+                borderRadius: '12px',
+                border: 'none',
+                padding: '12px'
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+message="Are you sure you want to delete this card? This action cannot be undone."
         confirmText="Delete"
         confirmColor="#EF4444"
         isDarkMode={isDarkMode}

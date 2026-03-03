@@ -99,6 +99,11 @@ const userSchema = new mongoose.Schema({
             type: String,
             required: true
         },
+        category: {
+            type: String,
+            default: 'Others',
+            enum: ['Food & Dining', 'Shopping', 'Transportation', 'Bills & Utilities', 'Entertainment', 'Healthcare', 'Education', 'Transfer', 'Loan', 'Withdrawal', 'Others']
+        },
         date: {
             type: Date,
             default: Date.now
@@ -140,6 +145,16 @@ const userSchema = new mongoose.Schema({
         }],
         createdAt: { type: Date, default: Date.now }
     }],
+    creditScore: {
+        type: Number,
+        default: 500,
+        min: 300,
+        max: 850
+    },
+    loanLimit: {
+        type: Number,
+        default: 50000 // Starting loan limit
+    },
         notifications: [{
             message: String,
             read: { type: Boolean, default: false },

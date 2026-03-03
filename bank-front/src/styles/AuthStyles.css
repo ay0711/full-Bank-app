@@ -49,7 +49,7 @@
 }
 
 .auth-container.auth-light {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: linear-gradient(135deg, #667eea10 0%, #764ba220 100%), linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
   color: var(--dark);
 }
 
@@ -73,40 +73,40 @@
   pointer-events: none;
 }
 
-/* Gradient blobs */
+/* Gradient blobs - Reduced animation */
 .auth-gradient-blob {
   position: absolute;
   border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-  filter: blur(40px);
-  opacity: 0.7;
-  animation: blobShift 8s ease-in-out infinite;
+  filter: blur(60px);
+  opacity: 0.3;
+  animation: blobShift 20s ease-in-out infinite;
 }
 
 .auth-gradient-blob.blob-1 {
-  width: 300px;
-  height: 300px;
+  width: 250px;
+  height: 250px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   top: -50px;
   left: -100px;
-  animation: blobShift 10s ease-in-out infinite;
+  animation: blobShift 25s ease-in-out infinite;
 }
 
 .auth-gradient-blob.blob-2 {
-  width: 250px;
-  height: 250px;
+  width: 200px;
+  height: 200px;
   background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
   top: 50%;
   right: -100px;
-  animation: blobShift 12s ease-in-out infinite reverse;
+  animation: blobShift 30s ease-in-out infinite reverse;
 }
 
 .auth-gradient-blob.blob-3 {
-  width: 280px;
-  height: 280px;
+  width: 220px;
+  height: 220px;
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   bottom: -100px;
   left: 50%;
-  animation: blobShift 14s ease-in-out infinite;
+  animation: blobShift 35s ease-in-out infinite;
 }
 
 /* Floating shapes */
@@ -120,42 +120,42 @@
 
 .shape {
   position: absolute;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 50%;
 }
 
 .shape-1 {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   top: 10%;
   left: 15%;
-  animation: float 6s ease-in-out infinite;
+  animation: float 12s ease-in-out infinite;
 }
 
 .shape-2 {
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
   top: 70%;
   right: 10%;
-  animation: float 7s ease-in-out infinite reverse;
+  animation: float 14s ease-in-out infinite reverse;
 }
 
 .shape-3 {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   top: 50%;
   left: 10%;
-  animation: float 8s ease-in-out infinite;
-  animation-delay: 1s;
+  animation: float 16s ease-in-out infinite;
+  animation-delay: 2s;
 }
 
 .shape-4 {
-  width: 100px;
-  height: 100px;
+  width: 70px;
+  height: 70px;
   bottom: 20%;
   right: 15%;
-  animation: float 9s ease-in-out infinite reverse;
-  animation-delay: 2s;
+  animation: float 18s ease-in-out infinite reverse;
+  animation-delay: 4s;
 }
 
 /* ============================================
@@ -261,7 +261,7 @@
    ============================================ */
 
 .animate-bounce-slow {
-  animation: bounce-slow 3s ease-in-out infinite !important;
+  animation: bounce-slow 4s ease-in-out infinite !important;
 }
 
 .animate-slide-in {
@@ -406,9 +406,9 @@
   position: relative;
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   background: var(--white);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(10px);
   animation: slide-in 0.6s ease-out;
 }
@@ -416,6 +416,7 @@
 .auth-dark .auth-card {
   background: linear-gradient(135deg, rgba(30, 30, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
   border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .auth-card:hover {
