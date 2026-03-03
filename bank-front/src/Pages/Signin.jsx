@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import SloganSplash from '../components/SloganSplash';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
@@ -20,7 +20,6 @@ const Signin = () => {
   });
   const navigate = useNavigate();
   const { setUser, isDarkMode, toggleTheme } = useAppContext();
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   const validationSchema = Yup.object({
     password: Yup.string().required('Password is required'),
@@ -28,14 +27,6 @@ const Signin = () => {
       email: Yup.string().email('Invalid email format').required('Email is required')
     })
   });
-
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
 
   const handleSubmit = async (values) => {
     setIsLoading(true);
@@ -111,7 +102,7 @@ const Signin = () => {
         {/* Header with logo and theme toggle */}
         <div className="auth-header">
           <div className="logo-container">
-            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" loading="lazy" />
+            <img src={ayBankCircle} alt="AY Bank Logo" className="auth-logo" loading="eager" fetchPriority="high" decoding="async" />
             <div className="logo-glow"></div>
           </div>
           <button 
@@ -175,7 +166,7 @@ const Signin = () => {
                   validationSchema={validationSchema}
                   onSubmit={handleSubmit}
                 >
-                  {({ isValid, dirty, values }) => (
+                  {({ isValid, dirty }) => (
                     <Form className="auth-form">
                       {/* Email input - conditional */}
                       {showEmail && (

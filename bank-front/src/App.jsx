@@ -49,6 +49,7 @@ function AppWrapper() {
 function App() {
   const [showBackendLoader, setShowBackendLoader] = useState(true);
   const [enableAssistant, setEnableAssistant] = useState(false);
+  const [showTelemetry, setShowTelemetry] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const [splashKey, setSplashKey] = useState(0);
@@ -97,6 +98,21 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const usesIdleCallback = typeof window.requestIdleCallback === 'function';
+    const idleHandle = usesIdleCallback
+      ? window.requestIdleCallback(() => setShowTelemetry(true), { timeout: 4000 })
+      : setTimeout(() => setShowTelemetry(true), 2000);
+
+    return () => {
+      if (usesIdleCallback && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleHandle);
+      } else {
+        clearTimeout(idleHandle);
+      }
+    };
+  }, []);
+
   const handleBackendReady = () => {
     setShowBackendLoader(false);
   };
@@ -123,9 +139,11 @@ function App() {
           />
         )}
       </Suspense>
-      <Suspense fallback={null}>
-        <AnimatedSplash show={showSplash} key={splashKey} />
-      </Suspense>
+      {showSplash && (
+        <Suspense fallback={null}>
+          <AnimatedSplash show={showSplash} key={splashKey} />
+        </Suspense>
+      )}
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Signup />} />
@@ -154,8 +172,12 @@ function App() {
           <AIAssistant />
         </Suspense>
       )}
-      <Analytics />
-      <SpeedInsights />
+      {showTelemetry && (
+        <>
+          <Analytics />
+          <SpeedInsights />
+        </>
+      )}
     </div>
   );
 }
