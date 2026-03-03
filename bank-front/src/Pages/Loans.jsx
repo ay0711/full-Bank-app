@@ -24,6 +24,11 @@ const Loans = () => {
   const [creditScore, setCreditScore] = useState(500);
   const [loanLimit, setLoanLimit] = useState(50000);
   const [hasActiveLoan, setHasActiveLoan] = useState(false);
+  const [calculatorAmount, setCalculatorAmount] = useState(50000);
+  const [calculatorDuration, setCalculatorDuration] = useState(12);
+  const [selectedLoanForCalc, setSelectedLoanForCalc] = useState(null);
+  const [showQuickApply, setShowQuickApply] = useState(false);
+  const [quickApplyLoan, setQuickApplyLoan] = useState(null);
   const { isDarkMode, user, setUser } = useAppContext();
 
   useEffect(() => {
@@ -45,15 +50,34 @@ const Loans = () => {
       const token = localStorage.getItem('token');
       const response = await axios.get(API_ENDPOINTS.LOANS, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 8000 // 8 second timeout - balance between speed and reliability
+        timeout: 10000
       });
-      setLoans(response.data.loans || []);
+      
+      if (response.data.loans) {
+        setLoans(response.data.loans);
+      }
       setCreditScore(response.data.creditScore || 500);
       setLoanLimit(response.data.loanLimit || 50000);
       setHasActiveLoan(response.data.hasActiveLoan || false);
+      
+      console.log('✅ Loans fetched successfully', {
+        count: response.data.loans?.length,
+        creditScore: response.data.creditScore,
+        loanLimit: response.data.loanLimit
+      });
     } catch (error) {
-      console.error('Error fetching loans:', error);
-      // Keep empty array if no data
+      console.error('❌ Error fetching loans:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      // Set default loans if fetch fails
+      setLoans([
+        { id: 1, name: 'Personal Loan', minAmount: 50000, maxAmount: 500000, interestRate: 12, duration: 24 },
+        { id: 2, name: 'Business Loan', minAmount: 100000, maxAmount: 5000000, interestRate: 10, duration: 36 },
+        { id: 3, name: 'Auto Loan', minAmount: 200000, maxAmount: 3000000, interestRate: 8, duration: 60 },
+        { id: 4, name: 'Education Loan', minAmount: 50000, maxAmount: 2000000, interestRate: 9, duration: 48 }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -61,6 +85,45 @@ const Loans = () => {
 
   const formatCurrency = (amount) => {
     return '₦' + amount.toLocaleString('en-NG');
+  };
+
+  const calculateRepayment = (loanData) => {
+    if (!loanData) return { monthly: 0, total: 0, interest: 0 };
+    const principal = calculatorAmount || 50000;
+    const rate = (loanData.interestRate || 12) / 100 / 12;
+    const months = calculatorDuration || 12;
+    
+    if (rate === 0) {
+      const total = principal;
+      const monthly = principal / months;
+      return { monthly: Math.round(monthly), total: Math.round(total), interest: 0 };
+    }
+    
+    const monthlyPayment = (principal * rate * Math.pow(1 + rate, months)) / (Math.pow(1 + rate, months) - 1);
+    const totalPayment = monthlyPayment * months;
+    const totalInterest = totalPayment - principal;
+    
+    return {
+      monthly: Math.round(monthlyPayment),
+      total: Math.round(totalPayment),
+      interest: Math.round(totalInterest)
+    };
+  };
+
+  const getApprovalStatus = (score) => {
+    if (score >= 750) return { badge: 'Instant Approval', color: '#10B981', icon: '✓' };
+    if (score >= 650) return { badge: 'Quick Approval', color: '#3B82F6', icon: '⚡' };
+    if (score >= 500) return { badge: 'Standard Review', color: '#F59E0B', icon: '📋' };
+    return { badge: 'Additional Verification Needed', color: '#EF4444', icon: '⚠️' };
+  };
+
+  const quickApply = async (loan, amount) => {
+    setSelectedLoan(loan);
+    setApplyAmount(amount.toString());
+    setApplyDuration(loan.duration?.toString() || '12');
+    setApplyReason('');
+    setApplyMessage('');
+    setShowApplyModal(true);
   };
 
   const openApplyModal = (loan) => {
@@ -299,7 +362,191 @@ const Loans = () => {
         </div>
       </div>
       
+      {/* Loan Calculator */}
+      <div className="row g-4 mb-5">
+        <div className="col-lg-8">
+          <div style={{
+            background: isDarkMode ? '#1F2937' : COLORS.card,
+            borderRadius: '16px',
+            padding: '32px',
+            boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+            border: isDarkMode ? '1px solid #374151' : 'none'
+          }}>
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-calculator me-2" style={{ color: COLORS.primary }}></i>Repayment Calculator
+            </h5>
+            
+            <div className="row g-3 mb-4">
+              <div className="col-lg-6">
+                <label style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }} className="fw-semibold small mb-2 d-block">
+                  Select Loan Type
+                </label>
+                <select 
+                  className="form-select"
+                  value={selectedLoanForCalc?._id || ''}
+                  onChange={(e) => {
+                    const selected = loans.find(l => l.id === parseInt(e.target.value) || l._id === e.target.value);
+                    setSelectedLoanForCalc(selected);
+                    setCalculatorAmount(selected?.minAmount || 50000);
+                  }}
+                  style={{
+                    borderRadius: '8px',
+                    borderColor: isDarkMode ? '#4B5563' : '#E5E7EB',
+                    background: isDarkMode ? '#111827' : '#F9FAFB',
+                    color: isDarkMode ? '#D1D5DB' : '#374151'
+                  }}
+                >
+                  <option value="">Choose a loan...</option>
+                  {loans.map(loan => (
+                    <option key={loan.id} value={loan.id}>{loan.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="col-lg-6">
+                <label style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }} className="fw-semibold small mb-2 d-block">
+                  Loan Amount: {formatCurrency(calculatorAmount)}
+                </label>
+                <input 
+                  type="range"
+                  min={selectedLoanForCalc?.minAmount || 50000}
+                  max={selectedLoanForCalc?.maxAmount || 500000}
+                  value={calculatorAmount}
+                  onChange={(e) => setCalculatorAmount(Number(e.target.value))}
+                  className="form-range"
+                  style={{ height: '6px' }}
+                />
+              </div>
+
+              <div className="col-lg-6">
+                <label style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }} className="fw-semibold small mb-2 d-block">
+                  Loan Duration: {calculatorDuration} months
+                </label>
+                <input 
+                  type="range"
+                  min="6"
+                  max="60"
+                  value={calculatorDuration}
+                  onChange={(e) => setCalculatorDuration(Number(e.target.value))}
+                  className="form-range"
+                  style={{ height: '6px' }}
+                />
+              </div>
+            </div>
+
+            {selectedLoanForCalc && (
+              <div className="row g-3">
+                {(() => {
+                  const repayment = calculateRepayment(selectedLoanForCalc);
+                  return (
+                    <>
+                      <div className="col-md-4">
+                        <div style={{
+                          background: isDarkMode ? '#111827' : '#F9FAFB',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? '#374151' : '#E5E7EB'}`
+                        }}>
+                          <div className="small" style={{ color: COLORS.lightText }}>Monthly Payment</div>
+                          <div className="fw-bold" style={{ color: COLORS.primary, fontSize: '1.5rem' }}>
+                            {formatCurrency(repayment.monthly)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div style={{
+                          background: isDarkMode ? '#111827' : '#F9FAFB',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? '#374151' : '#E5E7EB'}`
+                        }}>
+                          <div className="small" style={{ color: COLORS.lightText }}>Total Interest</div>
+                          <div className="fw-bold" style={{ color: COLORS.danger, fontSize: '1.5rem' }}>
+                            {formatCurrency(repayment.interest)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div style={{
+                          background: isDarkMode ? '#111827' : '#F9FAFB',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          border: `1px solid ${isDarkMode ? '#374151' : '#E5E7EB'}`
+                        }}>
+                          <div className="small" style={{ color: COLORS.lightText }}>Total Repayment</div>
+                          <div className="fw-bold" style={{ color: COLORS.success, fontSize: '1.5rem' }}>
+                            {formatCurrency(repayment.total)}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Approval Status */}
+        <div className="col-lg-4">
+          <div style={{
+            background: isDarkMode ? '#1F2937' : COLORS.card,
+            borderRadius: '16px',
+            padding: '32px',
+            boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+            border: isDarkMode ? '1px solid #374151' : 'none'
+          }}>
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-badge-check me-2" style={{ color: COLORS.primary }}></i>Your Status
+            </h5>
+            
+            {(() => {
+              const status = getApprovalStatus(creditScore);
+              return (
+                <>
+                  <div style={{
+                    background: isDarkMode ? '#111827' : '#F9FAFB',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    border: `2px solid ${status.color}`,
+                    textAlign: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>{status.icon}</div>
+                    <h6 className="fw-bold mb-2" style={{ color: status.color }}>
+                      {status.badge}
+                    </h6>
+                    <p className="small mb-0" style={{ color: COLORS.lightText }}>
+                      Based on your credit score of {creditScore}
+                    </p>
+                  </div>
+
+                  <div style={{
+                    background: isDarkMode ? '#111827' : '#F9FAFB',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    border: `1px solid ${isDarkMode ? '#374151' : '#E5E7EB'}`
+                  }}>
+                    <h6 className="fw-bold mb-3" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                      Your Benefits
+                    </h6>
+                    <div className="small" style={{ color: COLORS.lightText }}>
+                      <p className="mb-2">✓ Borrow up to {formatCurrency(loanLimit)}</p>
+                      <p className="mb-2">✓ Fast & Easy Application</p>
+                      <p className="mb-0">✓ Flexible Repayment Terms</p>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+      
       {/* Loan Offers */}
+      <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+        <i className="fas fa-handshake me-2" style={{ color: COLORS.primary }}></i>Available Loans
+      </h5>
       <div className="row g-4 mb-5">
         {loading ? (
           <div className="col-12 text-center py-5">
@@ -311,7 +558,15 @@ const Loans = () => {
             <h5 style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>No loans available</h5>
           </div>
         ) : (
-          loans.map((loan) => (
+          loans.map((loan) => {
+            const approvalStatus = getApprovalStatus(creditScore);
+            const quickAmounts = [
+              loan.minAmount,
+              Math.round((loan.minAmount + loan.maxAmount) / 2),
+              Math.min(loan.maxAmount, loanLimit)
+            ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
+            
+            return (
             <div key={loan.id} className="col-lg-6 col-xl-4">
               <div
                 style={{
@@ -320,7 +575,8 @@ const Loans = () => {
                   padding: '28px',
                   boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
                   border: isDarkMode ? '1px solid #374151' : 'none',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  position: 'relative'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-4px)';
@@ -331,6 +587,26 @@ const Loans = () => {
                   e.currentTarget.style.boxShadow = isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)';
                 }}
               >
+                {/* Approval Badge */}
+                {creditScore >= 650 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    background: approvalStatus.color,
+                    color: 'white',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '0.7rem',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    {approvalStatus.icon} {approvalStatus.badge === 'Instant Approval' ? 'INSTANT' : approvalStatus.badge === 'Quick Approval' ? 'QUICK' : ''}
+                  </div>
+                )}
+
                 <h5 className="fw-bold mb-3" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
                   {loan.name}
                 </h5>
@@ -342,7 +618,7 @@ const Loans = () => {
                   </div>
                 </div>
 
-                <div className="row g-2 mb-3">
+                <div className="row g-2 mb-4">
                   <div className="col-6">
                     <div className="small" style={{ color: COLORS.lightText }}>Interest Rate</div>
                     <div className="fw-semibold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
@@ -354,6 +630,43 @@ const Loans = () => {
                     <div className="fw-semibold" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
                       {loan.duration} months
                     </div>
+                  </div>
+                </div>
+
+                {/* Quick Apply Buttons */}
+                <div className="mb-3">
+                  <div className="small fw-semibold" style={{ color: COLORS.lightText, marginBottom: '8px' }}>Quick Apply</div>
+                  <div className="d-flex gap-2 justify-content-between">
+                    {quickAmounts.map((amount, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => quickApply(loan, amount)}
+                        style={{
+                          flex: 1,
+                          background: isDarkMode ? '#111827' : '#F3F4F6',
+                          border: `1px solid ${isDarkMode ? '#374151' : '#E5E7EB'}`,
+                          borderRadius: '8px',
+                          padding: '8px',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          color: isDarkMode ? '#D1D5DB' : '#6B7280',
+                          fontWeight: '500',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.background = COLORS.primary;
+                          e.target.style.color = 'white';
+                          e.target.style.borderColor = COLORS.primary;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.background = isDarkMode ? '#111827' : '#F3F4F6';
+                          e.target.style.color = isDarkMode ? '#D1D5DB' : '#6B7280';
+                          e.target.style.borderColor = isDarkMode ? '#374151' : '#E5E7EB';
+                        }}
+                      >
+                        {formatCurrency(amount)}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -374,12 +687,15 @@ const Loans = () => {
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = COLORS.primary;
                   }}
+                  disabled={hasActiveLoan}
+                  title={hasActiveLoan ? 'Repay existing loan first' : 'Apply for this loan'}
                 >
-                  Apply Now
+                  {hasActiveLoan ? 'Repay First' : 'Full Application'}
                 </button>
               </div>
             </div>
-          ))
+          );
+          })
         )}
       </div>
 
@@ -903,6 +1219,139 @@ const Loans = () => {
           </div>
         </div>
       )}
+
+      {/* Success Stories */}
+      <div className="row g-4 mb-5">
+        <div className="col-12">
+          <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+            <i className="fas fa-star me-2" style={{ color: COLORS.primary }}></i>Success Stories
+          </h5>
+        </div>
+        {[
+          {
+            name: 'Chioma A.',
+            avatar: '👩‍💼',
+            testimony: 'Got ₦500,000 personal loan in just 5 minutes. The process was so simple!',
+            amount: '₦500,000',
+            status: 'Fully Repaid'
+          },
+          {
+            name: 'Ahmed K.',
+            avatar: '👨‍💼',
+            testimony: 'Business loan helped me expand my store. Now doing 3x better!',
+            amount: '₦1,000,000',
+            status: 'Repaying'
+          },
+          {
+            name: 'Zainab M.',
+            avatar: '👩',
+            testimony: 'Easy approval, flexible repayment. Highly recommended!',
+            amount: '₦200,000',
+            status: 'Fully Repaid'
+          }
+        ].map((story, idx) => (
+          <div key={idx} className="col-lg-4">
+            <div style={{
+              background: isDarkMode ? '#1F2937' : COLORS.card,
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+              border: isDarkMode ? '1px solid #374151' : 'none'
+            }}>
+              <div className="d-flex align-items-center mb-3">
+                <div style={{
+                  fontSize: '2.5rem',
+                  marginRight: '12px'
+                }}>
+                  {story.avatar}
+                </div>
+                <div>
+                  <h6 className="fw-bold mb-0" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+                    {story.name}
+                  </h6>
+                  <div style={{ color: COLORS.lightText, fontSize: '0.85rem' }}>
+                    {story.status}
+                  </div>
+                </div>
+              </div>
+              
+              <p className="small mb-3" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText, fontStyle: 'italic' }}>
+                "{story.testimony}"
+              </p>
+              
+              <div style={{
+                background: isDarkMode ? '#111827' : '#F9FAFB',
+                borderRadius: '8px',
+                padding: '12px',
+                textAlign: 'center',
+                borderTop: `3px solid ${COLORS.primary}`
+              }}>
+                <div className="small" style={{ color: COLORS.lightText }}>Loan Amount</div>
+                <div className="fw-bold" style={{ color: COLORS.primary }}>
+                  {story.amount}
+                </div>
+              </div>
+
+              <div className="mt-3 text-center">
+                <i className="fas fa-star" style={{ color: '#F59E0B' }}></i>
+                <i className="fas fa-star ms-1" style={{ color: '#F59E0B' }}></i>
+                <i className="fas fa-star ms-1" style={{ color: '#F59E0B' }}></i>
+                <i className="fas fa-star ms-1" style={{ color: '#F59E0B' }}></i>
+                <i className="fas fa-star ms-1" style={{ color: '#F59E0B' }}></i>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* FAQ Section */}
+      <div className="row g-4 mb-5">
+        <div className="col-12">
+          <div style={{
+            background: isDarkMode ? '#1F2937' : COLORS.card,
+            borderRadius: '16px',
+            padding: '32px',
+            boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+            border: isDarkMode ? '1px solid #374151' : 'none'
+          }}>
+            <h5 className="fw-bold mb-4" style={{ color: isDarkMode ? '#F3F4F6' : COLORS.darkText }}>
+              <i className="fas fa-question-circle me-2" style={{ color: COLORS.primary }}></i>Frequently Asked Questions
+            </h5>
+
+            <div className="row g-4">
+              {[
+                {
+                  q: 'How quickly will I get approved?',
+                  a: 'Instant Approval members get approved within minutes. Others receive a decision within 24 hours.'
+                },
+                {
+                  q: 'What\'s the maximum loan I can get?',
+                  a: `Your loan limit is ${formatCurrency(loanLimit)} based on your credit score and account type.`
+                },
+                {
+                  q: 'Can I apply for multiple loans?',
+                  a: 'You can only have one active loan at a time. Repay your current loan to apply for another.'
+                },
+                {
+                  q: 'What are the interest rates?',
+                  a: 'Rates vary by loan type (8-12% p.a.). Use our calculator above to see exact rates.'
+                }
+              ].map((faq, idx) => (
+                <div key={idx} className="col-lg-6">
+                  <div>
+                    <h6 className="fw-bold mb-2" style={{ color: isDarkMode ? '#D1D5DB' : COLORS.darkText }}>
+                      {faq.q}
+                    </h6>
+                    <p className="small mb-0" style={{ color: COLORS.lightText }}>
+                      {faq.a}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </PageLayout>
   );
 };

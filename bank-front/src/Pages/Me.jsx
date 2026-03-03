@@ -711,18 +711,32 @@ const Me = () => {
               const plan = pendingUpgrade;
               const token = localStorage.getItem('token');
               
-              console.log('Sending upgrade request with:', {
+              // Validate before sending
+              if (!plan.tier || !['Standard', 'Premium', 'Business'].includes(plan.tier)) {
+                setMessage('Invalid account type selected');
+                setMessageType('error');
+                return;
+              }
+              
+              console.log('🚀 Sending upgrade request:', {
                 accountType: plan.tier,
-                endpoint: API_ENDPOINTS.UPGRADE_ACCOUNT
+                planName: plan.name,
+                timestamp: new Date().toISOString()
               });
               
               const response = await axios.post(
                 API_ENDPOINTS.UPGRADE_ACCOUNT,
                 { accountType: plan.tier },
-                { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
+                { 
+                  headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }, 
+                  timeout: 10000
+                }
               );
               
-              console.log('Upgrade successful:', response.data);
+              console.log('✅ Upgrade successful:', response.data);
               
               // Update user context with new balance and account type
               setUser(response.data.user);
@@ -734,21 +748,45 @@ const Me = () => {
                 `🎉 Successfully upgraded to ${plan.name}! ₦${response.data.upgradeCost?.toLocaleString('en-NG') || plan.priceNumeric.toLocaleString('en-NG')} has been deducted from your balance.`
               );
               setMessageType('success');
+              
+              // Close modal after success
+              setTimeout(() => {
+                setShowUpgradeConfirm(false);
+                setPendingUpgrade(null);
+              }, 2000);
+              
               setTimeout(() => setMessage(''), 6000);
             } catch (error) {
-              console.error('Upgrade error:', {
+              console.error('❌ Upgrade error details:', {
                 status: error.response?.status,
+                statusText: error.response?.statusText,
                 data: error.response?.data,
-                message: error.message
+                message: error.message,
+                code: error.code
               });
-              const errorMsg = error.response?.data?.message || error.message || 'Upgrade failed. Please try again.';
+              
+              // Provide specific error messages based on response
+              let errorMsg = 'Upgrade failed. Please try again.';
+              
+              if (error.response?.status === 400) {
+                errorMsg = error.response.data?.message || 'Invalid request. Please check your account type.';
+              } else if (error.response?.status === 404) {
+                errorMsg = 'User account not found. Please log in again.';
+              } else if (error.response?.status === 500) {
+                errorMsg = 'Server error. Please try again later.';
+              } else if (error.code === 'ECONNABORTED') {
+                errorMsg = 'Request timeout. Please try again.';
+              } else if (!error.response) {
+                errorMsg = 'Network error. Please check your connection.';
+              }
+              
               setMessage(errorMsg);
               setMessageType('error');
-              setTimeout(() => setMessage(''), 6000);
+              setTimeout(() => setMessage(''), 8000);
             }
           }
-          setShowUpgradeConfirm(false);
-          setPendingUpgrade(null);
+          
+          // Don't auto-close on error, let user try again
         }}
         title="Upgrade Account"
         message={pendingUpgrade ? `Are you sure you want to upgrade to ${pendingUpgrade.name}?\n\nUpgrade cost: ₦${pendingUpgrade.priceNumeric.toLocaleString('en-NG')}\n\nThis amount will be deducted from your account balance.` : ''}

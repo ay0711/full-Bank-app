@@ -413,63 +413,98 @@ router.get('/users', authenticateToken, async (req, res) => {
 router.post('/upgrade-account', authenticateToken, async (req, res) => {
     try {
         const { accountType } = req.body;
-        console.log('Upgrade request received with accountType:', accountType);
         
-        if (!accountType || !['Standard', 'Premium', 'Business'].includes(accountType)) {
-            console.log('Invalid account type:', accountType);
-            return res.status(400).json({ message: 'Invalid account type' });
+        console.log('🔵 Upgrade request received:', {
+            userId: req.user._id,
+            requestBody: req.body,
+            accountType: accountType,
+            typeOf: typeof accountType
+        });
+        
+        // Validate accountType - be more strict
+        if (!accountType || typeof accountType !== 'string') {
+            console.log('❌ Invalid accountType:', accountType);
+            return res.status(400).json({ 
+                message: 'Invalid account type provided',
+                received: accountType
+            });
+        }
+        
+        const trimmedAccountType = accountType.trim();
+        
+        if (!['Standard', 'Premium', 'Business'].includes(trimmedAccountType)) {
+            console.log('❌ AccountType not in allowed list:', trimmedAccountType);
+            return res.status(400).json({ 
+                message: `Invalid account type: ${trimmedAccountType}. Must be Standard, Premium, or Business.`,
+                allowedTypes: ['Standard', 'Premium', 'Business'],
+                received: trimmedAccountType
+            });
         }
         
         const user = await User.findById(req.user._id);
         
         if (!user) {
+            console.log('❌ User not found:', req.user._id);
             return res.status(404).json({ message: 'User not found' });
         }
         
-        console.log('User current account type:', user.accountType || 'Standard');
+        console.log('👤 User found:', {
+            currentType: user.accountType || 'Standard',
+            currentBalance: user.accountBalance
+        });
         
         // Check if already on this tier or higher
         const tierHierarchy = { 'Standard': 0, 'Premium': 1, 'Business': 2 };
         const currentTier = tierHierarchy[user.accountType || 'Standard'];
-        const requestedTier = tierHierarchy[accountType];
+        const requestedTier = tierHierarchy[trimmedAccountType];
         
-        console.log('Current tier:', currentTier, 'Requested tier:', requestedTier);
+        console.log('📊 Tier comparison:', {
+            currentTier,
+            requestedTier,
+            canUpgrade: requestedTier > currentTier
+        });
         
         if (requestedTier <= currentTier) {
-            console.log('User already on this tier or higher');
+            console.log('❌ User already on this tier or higher');
             return res.status(400).json({ 
-                message: 'You are already on this tier or higher' 
+                message: `You are already on the ${trimmedAccountType} tier or higher`,
+                currentTier: user.accountType || 'Standard',
+                requestedTier: trimmedAccountType
             });
         }
         
         // Define upgrade costs
         const upgradeCosts = {
-            'Premium': 4999,   // From Standard to Premium
-            'Business': 9999   // From Standard/Premium to Business
+            'Premium': 4999,
+            'Business': 9999
         };
         
         let upgradeCost = 0;
-        if (accountType === 'Premium' && (user.accountType === 'Standard' || !user.accountType)) {
+        if (trimmedAccountType === 'Premium' && (user.accountType === 'Standard' || !user.accountType)) {
             upgradeCost = upgradeCosts.Premium;
-        } else if (accountType === 'Business') {
-            // If upgrading from Standard to Business, charge Business price
-            // If upgrading from Premium to Business, charge difference
+        } else if (trimmedAccountType === 'Business') {
             if (user.accountType === 'Standard' || !user.accountType) {
                 upgradeCost = upgradeCosts.Business;
             } else if (user.accountType === 'Premium') {
-                upgradeCost = upgradeCosts.Business - upgradeCosts.Premium; // 5000
+                upgradeCost = upgradeCosts.Business - upgradeCosts.Premium;
             }
         }
         
-        console.log('Upgrade cost:', upgradeCost, 'User balance:', user.accountBalance);
+        console.log('💰 Cost calculation:', {
+            newAccountType: trimmedAccountType,
+            upgradeCost,
+            userBalance: user.accountBalance,
+            hasSufficientBalance: user.accountBalance >= upgradeCost
+        });
         
         // Check if user has sufficient balance
         if (upgradeCost > 0 && user.accountBalance < upgradeCost) {
-            console.log('Insufficient balance for upgrade');
+            console.log('❌ Insufficient balance');
             return res.status(400).json({ 
                 message: `Insufficient balance. ₦${upgradeCost.toLocaleString('en-NG')} required for upgrade.`,
                 required: upgradeCost,
-                current: user.accountBalance
+                current: user.accountBalance,
+                shortfall: upgradeCost - user.accountBalance
             });
         }
         
@@ -482,20 +517,20 @@ router.post('/upgrade-account', authenticateToken, async (req, res) => {
             user.transactions.push({
                 type: 'debit',
                 amount: upgradeCost,
-                description: `Account upgrade to ${accountType}`,
+                description: `Account upgrade to ${trimmedAccountType}`,
                 category: 'Upgrade',
                 date: new Date()
             });
             user.markModified('transactions');
         }
         
-        user.accountType = accountType;
+        user.accountType = trimmedAccountType;
         await user.save();
         
-        console.log('Account upgraded successfully to:', accountType);
+        console.log('✅ Account upgraded successfully to:', trimmedAccountType);
         
         res.json({ 
-            message: `Account upgraded successfully to ${accountType}!`,
+            message: `Account upgraded successfully to ${trimmedAccountType}!`,
             upgradeCost,
             user: {
                 _id: user._id,
@@ -509,8 +544,14 @@ router.post('/upgrade-account', authenticateToken, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Upgrade account error:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('❌ Upgrade account error:', {
+            message: error.message,
+            stack: error.stack
+        });
+        res.status(500).json({ 
+            message: 'Internal server error during upgrade',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
