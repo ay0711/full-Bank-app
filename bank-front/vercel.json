@@ -1,7 +1,4 @@
 {
-  "crons": [
-    { "path": "/api/warmup", "schedule": "*/10 * * * *" }
-  ],
   "headers": [
     {
       "source": "/assets/(.*)",
