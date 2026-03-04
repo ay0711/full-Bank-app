@@ -59,8 +59,8 @@ function App() {
   const isPublicRoute = PUBLIC_ROUTES.has(location.pathname);
 
   const shouldShowBackendLoader = useMemo(
-    () => showBackendLoader && !PUBLIC_ROUTES.has(location.pathname),
-    [showBackendLoader, location.pathname]
+    () => showBackendLoader,
+    [showBackendLoader]
   );
 
   useEffect(() => {
