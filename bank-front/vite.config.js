@@ -24,17 +24,6 @@ export default defineConfig({
         assetFileNames: 'assets/[name].[ext]',
         chunkFileNames: 'assets/[name].[hash].js',
         entryFileNames: 'assets/[name].[hash].js',
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'react-vendor';
-            }
-            if (id.includes('recharts')) {
-              return 'charts';
-            }
-            return 'vendor';
-          }
-        },
       },
     },
   },
