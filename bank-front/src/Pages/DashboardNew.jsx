@@ -1,5 +1,5 @@
 
-import React, { lazy, Suspense, useState, useEffect, startTransition, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, startTransition } from 'react';
 import axios from 'axios';
 import { useAppContext } from '../context/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -7,6 +7,7 @@ import BottomNav from '../components/BottomNav';
 import '../styles/DashboardNew.css';
 import { formatCurrency, getMaskedCurrency } from '../utils/currencyConverter';
 import { API_ENDPOINTS } from '../utils/api';
+import { useDebouncedValue } from '../utils/debounce';
 
 const DashboardCharts = lazy(() => import('../components/DashboardCharts'));
 
@@ -27,7 +28,6 @@ const COLORS = {
 const chartColors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 const Dashboard = () => {
-  const chartsTriggerRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
   const [analytics, setAnalytics] = useState({ totalSpent: 0, totalReceived: 0 });
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
@@ -37,6 +37,7 @@ const Dashboard = () => {
   const [expenseData, setExpenseData] = useState([]);
   const [shouldRenderCharts, setShouldRenderCharts] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [quickTransferUsers, setQuickTransferUsers] = useState([]);
   const [quickTransferAmount, setQuickTransferAmount] = useState('');
@@ -173,32 +174,6 @@ const Dashboard = () => {
     
     fetchNonCritical();
   }, []);
-
-  useEffect(() => {
-    const target = chartsTriggerRef.current;
-
-    if (!target || shouldRenderCharts) return;
-
-    if (typeof window === 'undefined' || typeof window.IntersectionObserver === 'undefined') {
-      setShouldRenderCharts(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry?.isIntersecting) {
-          setShouldRenderCharts(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '200px 0px', threshold: 0.05 }
-    );
-
-    observer.observe(target);
-
-    return () => observer.disconnect();
-  }, [shouldRenderCharts]);
 
   if (!user) {
     return (
@@ -470,6 +445,8 @@ const Dashboard = () => {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
+                  }}
+                  onInput={(e) => {
                     setShowSearchResults(e.target.value.length > 0);
                   }}
                   style={{
@@ -506,8 +483,8 @@ const Dashboard = () => {
                 >
                   {transactions
                     .filter(tx =>
-                      tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      tx.amount?.toString().includes(searchQuery)
+                      tx.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+                      tx.amount?.toString().includes(debouncedSearchQuery)
                     )
                     .slice(0, 5)
                     .map((tx, idx) => (
@@ -548,8 +525,8 @@ const Dashboard = () => {
                       </div>
                     ))}
                   {transactions.filter(tx =>
-                    tx.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    tx.amount?.toString().includes(searchQuery)
+                    tx.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+                    tx.amount?.toString().includes(debouncedSearchQuery)
                   ).length === 0 && (
                     <div
                       style={{
@@ -722,7 +699,7 @@ const Dashboard = () => {
         </div>
 
         {/* Charts Section */}
-        <div ref={chartsTriggerRef} className="row g-4 mb-5">
+        <div className="row g-4 mb-5">
           {shouldRenderCharts ? (
             <Suspense
               fallback={
@@ -741,7 +718,13 @@ const Dashboard = () => {
             </Suspense>
           ) : (
             <div className="col-12 text-center py-5">
-              <div className="spinner-border text-primary" />
+              <button
+                type="button"
+                className="btn btn-primary rounded-pill px-4 py-2"
+                onClick={() => setShouldRenderCharts(true)}
+              >
+                Load Analytics Charts
+              </button>
             </div>
           )}
         </div>

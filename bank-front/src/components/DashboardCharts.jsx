@@ -30,47 +30,53 @@ const ChartCard = ({ title, children, isDarkMode, colors }) => (
   </div>
 );
 
+const BarChartSection = ({ weeklyData, isDarkMode, colors }) => (
+  <ChartCard title="Weekly Activity" isDarkMode={isDarkMode} colors={colors}>
+    {weeklyData.length > 0 ? (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={weeklyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke={isDarkMode ? '#374151' : '#E5E7EB'}
+            vertical={false}
+          />
+          <XAxis
+            dataKey="day"
+            stroke={isDarkMode ? '#9CA3AF' : '#6B7280'}
+            style={{ fontSize: '0.875rem' }}
+          />
+          <YAxis
+            stroke={isDarkMode ? '#9CA3AF' : '#6B7280'}
+            style={{ fontSize: '0.875rem' }}
+          />
+          <Tooltip
+            contentStyle={{
+              background: isDarkMode ? '#374151' : colors.card,
+              borderRadius: '12px',
+              border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
+              color: isDarkMode ? '#F3F4F6' : colors.darkText,
+            }}
+          />
+          <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
+          <Bar dataKey="Deposit" fill={colors.primary} radius={[8, 8, 0, 0]} />
+          <Bar dataKey="Withdraw" fill={colors.success} radius={[8, 8, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    ) : (
+      <div className="text-center py-5">
+        <div className="spinner-border text-primary" />
+      </div>
+    )}
+  </ChartCard>
+);
+
+const MemoBarChart = React.memo(BarChartSection);
+
 const DashboardCharts = ({ weeklyData, expenseData, isDarkMode, colors, chartColors }) => {
   return (
     <>
       <div className="col-lg-8">
-        <ChartCard title="Weekly Activity" isDarkMode={isDarkMode} colors={colors}>
-          {weeklyData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={weeklyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={isDarkMode ? '#374151' : '#E5E7EB'}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="day"
-                  stroke={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                  style={{ fontSize: '0.875rem' }}
-                />
-                <YAxis
-                  stroke={isDarkMode ? '#9CA3AF' : '#6B7280'}
-                  style={{ fontSize: '0.875rem' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: isDarkMode ? '#374151' : colors.card,
-                    borderRadius: '12px',
-                    border: isDarkMode ? '1px solid #4B5563' : '1px solid #E5E7EB',
-                    color: isDarkMode ? '#F3F4F6' : colors.darkText,
-                  }}
-                />
-                <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="circle" />
-                <Bar dataKey="Deposit" fill={colors.primary} radius={[8, 8, 0, 0]} />
-                <Bar dataKey="Withdraw" fill={colors.success} radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" />
-            </div>
-          )}
-        </ChartCard>
+        <MemoBarChart weeklyData={weeklyData} isDarkMode={isDarkMode} colors={colors} />
       </div>
 
       <div className="col-lg-4">
@@ -131,4 +137,4 @@ const DashboardCharts = ({ weeklyData, expenseData, isDarkMode, colors, chartCol
   );
 };
 
-export default DashboardCharts;
+export default React.memo(DashboardCharts);
