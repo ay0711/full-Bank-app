@@ -50,6 +50,33 @@ const Dashboard = () => {
   const currency = settings?.currency || 'NGN';
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const shouldAutoLoadCharts = localStorage.getItem('dashboardChartsAutoLoad') === 'true';
+    if (!shouldAutoLoadCharts) return;
+
+    const usesIdleCallback = typeof window.requestIdleCallback === 'function';
+    const idleHandle = usesIdleCallback
+      ? window.requestIdleCallback(() => setShouldRenderCharts(true), { timeout: 1800 })
+      : setTimeout(() => setShouldRenderCharts(true), 1000);
+
+    return () => {
+      if (usesIdleCallback && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleHandle);
+      } else {
+        clearTimeout(idleHandle);
+      }
+    };
+  }, []);
+
+  const handleLoadCharts = () => {
+    setShouldRenderCharts(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboardChartsAutoLoad', 'true');
+    }
+  };
+
+  useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (!token || !userData) {
@@ -721,7 +748,7 @@ const Dashboard = () => {
               <button
                 type="button"
                 className="btn btn-primary rounded-pill px-4 py-2"
-                onClick={() => setShouldRenderCharts(true)}
+                onClick={handleLoadCharts}
               >
                 Load Analytics Charts
               </button>
