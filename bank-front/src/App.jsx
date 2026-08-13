@@ -67,13 +67,11 @@ function App() {
     if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then(reg => {
-          console.log(`SW registered: ${reg}`);
-          console.log(reg);
+          console.log(`SW registered for scope: ${reg.scope}`);
         })
         .catch(regError => {
           console.log(`SW registration failed: ${regError}`);
-          console.log(regError);
-        })
+        });
     }
 
     if (import.meta.env.DEV && 'serviceWorker' in navigator) {
